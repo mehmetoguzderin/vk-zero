@@ -407,7 +407,6 @@ __pycache__/
 .project
 .settings/
 .valgrindrc
-.vscode
 .favorites.json
 /Makefile
 /build/
