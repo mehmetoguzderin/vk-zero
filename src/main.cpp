@@ -10,7 +10,7 @@
 #include "volk.h"
 #include <iostream>
 
-int main() {
+int main(int argc, char *argv[]) {
     auto app_name = "main";
     if (auto result = volkInitialize(); result != VK_SUCCESS) {
         std::cerr << "Failed to initialize Volk. Error: " << result << "\n";
