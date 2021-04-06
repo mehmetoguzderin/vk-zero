@@ -27,6 +27,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 FetchContent_Declare(
+  tinygltf
+  GIT_REPOSITORY https://github.com/syoyo/tinygltf
+  GIT_TAG        master 
+)
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+FetchContent_MakeAvailable(tinygltf)
+FetchContent_Declare(
   volk
   GIT_REPOSITORY https://github.com/zeux/volk
   GIT_TAG        master
@@ -42,7 +49,8 @@ FetchContent_MakeAvailable(volk)
 
 add_executable(main "src/main.cpp")
 set_property(TARGET main PROPERTY CXX_STANDARD 20)
-target_link_libraries(main PRIVATE SDL2)
+target_include_directories(main PRIVATE ${tinygltf_SOURCE_DIR})
+target_link_libraries(main PRIVATE SDL2-static)
 target_link_libraries(main PRIVATE Vulkan-Headers)
 target_link_libraries(main PRIVATE vk-bootstrap)
 target_link_libraries(main PRIVATE glm)
