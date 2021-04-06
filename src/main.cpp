@@ -2,6 +2,7 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 #include "VkBootstrap.h"
+#include "glm/glm.hpp"
 #include "volk.h"
 #include <iostream>
 
