@@ -25,23 +25,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vk-bootstrap)
 
-FetchContent_Declare(
-  clspv
-  GIT_REPOSITORY https://github.com/google/clspv
-  GIT_TAG        master
-)
-FetchContent_GetProperties(clspv)
-if(NOT clspv_POPULATED)
-  FetchContent_Populate(clspv)
-  execute_process(
-    COMMAND "python" "utils/fetch_sources.py"
-    WORKING_DIRECTORY "${clspv_SOURCE_DIR}"
-    RESULT_VARIABLE clspv_EXECUTE_RESULT
-    OUTPUT_VARIABLE clspv_EXECUTE_OUTPUT
-  )
-  message(STATUS "clspv: ${clspv_EXECUTE_RESULT} ${clspv_EXECUTE_OUTPUT}")
-  add_subdirectory(${clspv_SOURCE_DIR} ${clspv_BINARY_DIR})
-endif()
+# FetchContent_Declare(
+#   clspv
+#   GIT_REPOSITORY https://github.com/google/clspv
+#   GIT_TAG        master
+# )
+# FetchContent_GetProperties(clspv)
+# if(NOT clspv_POPULATED)
+#   FetchContent_Populate(clspv)
+#   execute_process(
+#     COMMAND "python" "utils/fetch_sources.py"
+#     WORKING_DIRECTORY "${clspv_SOURCE_DIR}"
+#     RESULT_VARIABLE clspv_EXECUTE_RESULT
+#     OUTPUT_VARIABLE clspv_EXECUTE_OUTPUT
+#   )
+#   message(STATUS "clspv: ${clspv_EXECUTE_RESULT} ${clspv_EXECUTE_OUTPUT}")
+#   add_subdirectory(${clspv_SOURCE_DIR} ${clspv_BINARY_DIR})
+# endif()
 
 FetchContent_Declare(
   glm
@@ -86,7 +86,7 @@ link_libraries(SDL2-static)
 link_libraries(SDL2main)
 link_libraries(Vulkan-Headers)
 link_libraries(vk-bootstrap)
-link_libraries(clspv)
+# link_libraries(clspv)
 link_libraries(glm)
 link_libraries(volk)
 set(
