@@ -28,11 +28,23 @@ int main(int argc, char *argv[]) {
     }
     SDL_CreateWindow(app_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                      512, 512, SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
-    while (true) {
-        SDL_Event event;
+
+    SDL_Event event;
+    int quit = 0;
+    while (!quit) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                return 0;
+            switch (event.type) {
+            case SDL_KEYUP:
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                    quit = 1;
+                break;
+
+            case SDL_QUIT:
+                quit = 1;
+                break;
+
+            default:
+                break;
             }
         }
     }

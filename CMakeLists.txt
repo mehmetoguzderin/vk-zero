@@ -79,7 +79,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif()
 FetchContent_MakeAvailable(volk)
 
-include_directories(${imgui_SOURCE_DIR})
+include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 include_directories(${tinygltf_SOURCE_DIR})
 include_directories("src")
 link_libraries(SDL2-static)
