@@ -1,13 +1,6 @@
-﻿#define VK_NO_PROTOTYPES
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "SDL.h"
-#include "SDL_vulkan.h"
-#include "VkBootstrap.h"
-#include "glm/glm.hpp"
-#include "tiny_gltf.h"
-#include "volk.h"
+﻿
+#include "lib.h"
+
 #include <iostream>
 
 int main(int argc, char *argv[]) {

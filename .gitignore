@@ -439,3 +439,4 @@ no_llvm_build
 **node_modules
 **package-lock.json
 # Before adding new lines, see the comment at the top.
+!src/bin
