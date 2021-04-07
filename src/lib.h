@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VK_ZERO_LIB_H
+#define VK_ZERO_LIB_H
 
 #ifdef VK_ZERO_CPU
 
@@ -31,6 +32,11 @@ inline uint32_t get_global_id(uint32_t dimindx) { return global_id[dimindx]; }
 
 #else
 
+#define int32_t int
+#define uint32_t uint
+#define int64_t long
+#define uint64_t ulong
+
 #endif
 
 kernel void shared_kernel(global int *in, global int *out, int n) {
@@ -38,3 +44,15 @@ kernel void shared_kernel(global int *in, global int *out, int n) {
         out[i] = in[i];
     }
 }
+
+#ifndef VK_ZERO_CPU
+
+kernel void device_kernel(global int *in, global int *out, int n) {
+    for (int i = 0; i < n; ++i) {
+        out[i] = in[i];
+    }
+}
+
+#endif
+
+#endif
