@@ -37,6 +37,9 @@ inline uint32_t get_global_id(uint32_t dimindx) { return global_id[dimindx]; }
 #define int64_t long
 #define uint64_t ulong
 
+#define int2 (int2)
+#define uint4 (uint4)
+
 #endif
 
 kernel void shared_kernel(global int *in, global int *out, int n) {
@@ -47,10 +50,10 @@ kernel void shared_kernel(global int *in, global int *out, int n) {
 
 #ifndef VK_ZERO_CPU
 
-kernel void device_kernel(global int *in, global int *out, int n) {
-    for (int i = 0; i < n; ++i) {
-        out[i] = in[i];
-    }
+kernel void device_kernel(write_only image2d_t output) {
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    write_imageui(output, int2(x, y), uint4(255, 0, 0, 255));
 }
 
 #endif

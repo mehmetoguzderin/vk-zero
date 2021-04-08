@@ -79,27 +79,52 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif()
 FetchContent_MakeAvailable(volk)
 
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+  find_program(CLSPV_WIN "clspv")
+  if(CLSPV_WIN)
+    set(
+      CLSPV_COMMAND
+      clspv -O=3
+            --spv-version=1.3
+            -o "lib.spv"
+            "lib.h"
+    )
+  else()
+    set(
+      CLSPV_COMMAND
+      wsl
+      clspv -O=3
+            --spv-version=1.3
+            -o "lib.spv"
+            "lib.h"
+    )
+  endif()
+else()
+  set(
+    CLSPV_COMMAND
+    clspv -O=3
+          --spv-version=1.3
+          -o "lib.spv"
+          "lib.h"
+  )
+endif()
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
-  COMMAND clspv -O=3
-                --spv-version=1.3
-                -o "lib.spv"
-                "lib.h"
+  COMMAND ${CLSPV_COMMAND}
   COMMAND spirv-opt -O
                     -o "lib.spv"
                     "lib.spv"
+  COMMAND ${CMAKE_COMMAND} -E copy
+                           "lib.spv"
+                           "${CMAKE_BINARY_DIR}/src/lib.spv"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.h"
   VERBATIM
+  COMMAND_EXPAND_LISTS
 )
 add_custom_target(
   spirv_target ALL
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
-)
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
-  "src/lib.spv"
-  COPYONLY
 )
 
 include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
