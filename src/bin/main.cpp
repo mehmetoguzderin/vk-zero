@@ -86,6 +86,8 @@ int main(int argc, char *argv[]) {
     } else {
         swapchain = result.value();
     }
+    auto swapchain_images = swapchain.get_images().value();
+    auto swapchain_image_views = swapchain.get_image_views().value();
     VkQueue queue;
     if (auto result = device.get_queue(vkb::QueueType::present);
         !result.has_value()) {
@@ -119,6 +121,11 @@ int main(int argc, char *argv[]) {
                   << "\n";
         return 1;
     }
+    VkPipelineShaderStageCreateInfo shader_stages[] = {
+        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+         .module = shader_module,
+         .pName = "device_kernel"}};
     SDL_Event event;
     int quit = 0;
     while (!quit) {
