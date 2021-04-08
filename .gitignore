@@ -440,3 +440,4 @@ no_llvm_build
 **package-lock.json
 # Before adding new lines, see the comment at the top.
 !src/bin
+*.spv
