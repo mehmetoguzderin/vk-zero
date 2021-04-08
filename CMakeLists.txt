@@ -111,7 +111,8 @@ endif()
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
   COMMAND ${CLSPV_COMMAND}
-  COMMAND spirv-opt -O
+  COMMAND spirv-opt --strip-reflect
+                    -O
                     -o "lib.spv"
                     "lib.spv"
   COMMAND ${CMAKE_COMMAND} -E copy

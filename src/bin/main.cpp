@@ -55,10 +55,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     vkb::PhysicalDevice physical_device;
-    if (auto result = vkb::PhysicalDeviceSelector{instance}
-                          .set_minimum_version(1, 1)
-                          .set_surface(surface)
-                          .select();
+    if (auto result =
+            vkb::PhysicalDeviceSelector{instance}
+                .set_minimum_version(1, 1)
+                .add_required_extension(
+                    VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME)
+                .add_required_extension(VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME)
+                .set_surface(surface)
+                .select();
         !result) {
         std::cerr << result.error().message() << "\n";
         return 1;
@@ -76,6 +80,11 @@ int main(int argc, char *argv[]) {
     vkb::Swapchain swapchain;
     if (auto result =
             vkb::SwapchainBuilder{device}
+                .use_default_format_selection()
+                .add_fallback_format({VK_FORMAT_B8G8R8A8_UNORM,
+                                      VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
+                .add_fallback_format({VK_FORMAT_R8G8B8A8_UNORM,
+                                      VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
                 .add_format_feature_flags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
                 .add_image_usage_flags(VK_IMAGE_USAGE_STORAGE_BIT)
                 .build();
