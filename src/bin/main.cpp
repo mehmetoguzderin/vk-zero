@@ -1,6 +1,10 @@
 ﻿#include "lib.h"
 
+#include <cstdio>
+#include <fstream>
 #include <iostream>
+#include <memory>
+#include <string>
 #include <vector>
 
 int main(int argc, char *argv[]) {
@@ -30,6 +34,7 @@ int main(int argc, char *argv[]) {
     }
     vkb::Instance instance;
     if (auto result = instance_builder.set_app_name(app_name)
+                          .require_api_version(1, 1)
                           .use_default_debug_messenger()
                           .request_validation_layers()
                           .build();
@@ -50,8 +55,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     vkb::PhysicalDevice physical_device;
-    if (auto result =
-            vkb::PhysicalDeviceSelector{instance}.set_surface(surface).select();
+    if (auto result = vkb::PhysicalDeviceSelector{instance}
+                          .set_minimum_version(1, 1)
+                          .set_surface(surface)
+                          .select();
         !result) {
         std::cerr << result.error().message() << "\n";
         return 1;
@@ -84,9 +91,33 @@ int main(int argc, char *argv[]) {
         !result.has_value()) {
         std::cerr << "failed to get queue: " << result.error().message()
                   << "\n";
-        return -1;
+        return 1;
     } else {
         queue = result.value();
+    }
+    std::ifstream file("src/lib.spv", std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "failed to open file"
+                  << "\n";
+        return 1;
+    }
+    size_t file_size = (size_t)file.tellg();
+    std::vector<char> code(file_size);
+    file.seekg(0);
+    file.read(code.data(), static_cast<std::streamsize>(file_size));
+    file.close();
+    VkShaderModuleCreateInfo shader_module_create_info = {};
+    shader_module_create_info.sType =
+        VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shader_module_create_info.codeSize = code.size();
+    shader_module_create_info.pCode =
+        reinterpret_cast<const uint32_t *>(code.data());
+    VkShaderModule shader_module;
+    if (vkCreateShaderModule(device.device, &shader_module_create_info,
+                             VK_NULL_HANDLE, &shader_module) != VK_SUCCESS) {
+        std::cerr << "failed to create shader module"
+                  << "\n";
+        return 1;
     }
     SDL_Event event;
     int quit = 0;

@@ -96,6 +96,11 @@ add_custom_target(
   spirv_target ALL
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
 )
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
+  "src/lib.spv"
+  COPYONLY
+)
 
 include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 include_directories(${tinygltf_SOURCE_DIR})
