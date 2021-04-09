@@ -43,10 +43,12 @@ std::optional<int> create_window_instance_surface(const char *&name,
     for (auto &extension : extensions) {
         instance_builder.enable_extension(extension);
     }
+#if !(NDEBUG)
+    instance_builder.request_validation_layers();
+#endif
     if (auto result = instance_builder.set_app_name(name)
                           .require_api_version(1, 1)
                           .use_default_debug_messenger()
-                          .request_validation_layers()
                           .build();
         !result) {
         return -1;
