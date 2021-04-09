@@ -37,8 +37,9 @@ inline uint32_t get_global_id(uint32_t dimindx) { return global_id[dimindx]; }
 #define int64_t long
 #define uint64_t ulong
 
-#define int2 (int2)
-#define uint4 (uint4)
+#define ivec2 (int2)
+#define vec4 (float4)
+#define uvec4 (uint4)
 
 #endif
 
@@ -51,9 +52,14 @@ kernel void shared_kernel(global int *in, global int *out, int n) {
 #ifndef VK_ZERO_CPU
 
 kernel void device_kernel(write_only image2d_t output) {
+    int2 dimensions = get_image_dim(output);
     int x = get_global_id(0);
     int y = get_global_id(1);
-    write_imageui(output, int2(x, y), uint4(255, 0, 0, 255));
+    if (x >= dimensions.x || y >= dimensions.y)
+        return;
+    write_imagef(output, ivec2(x, y),
+                 vec4((float)x / (float)dimensions.x,
+                      (float)y / (float)dimensions.y, 1.f, 1.f));
 }
 
 #endif

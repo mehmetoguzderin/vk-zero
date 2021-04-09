@@ -254,18 +254,123 @@ int main(int argc, char *argv[]) {
     } else {
         queue = result.value();
     }
+    auto queue_family_index =
+        device.get_queue_index(vkb::QueueType::present).value();
     VkCommandPoolCreateInfo command_pool_create_info = {};
     command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    command_pool_create_info.queueFamilyIndex =
-        device.get_queue_index(vkb::QueueType::present).value();
+    command_pool_create_info.queueFamilyIndex = queue_family_index;
     VkCommandPool command_pool;
     if (vkCreateCommandPool(device.device, &command_pool_create_info, nullptr,
                             &command_pool) != VK_SUCCESS) {
         std::cerr << "failed to create command pool\n";
         return 1;
     }
+    std::vector<VkCommandBuffer> command_buffers{swapchain_image_views.size()};
+    VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
+    command_buffer_allocate_info.sType =
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_allocate_info.commandPool = command_pool;
+    command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_allocate_info.commandBufferCount =
+        (uint32_t)command_buffers.size();
+
+    if (vkAllocateCommandBuffers(device.device, &command_buffer_allocate_info,
+                                 command_buffers.data()) != VK_SUCCESS) {
+        std::cerr << "failed to allocate command buffers\n";
+        return 1;
+    }
+
+    int w, h;
+    SDL_Vulkan_GetDrawableSize(window, &w, &h);
+    for (size_t i = 0; i < command_buffers.size(); i++) {
+        VkCommandBufferBeginInfo command_buffer_begin_info = {};
+        command_buffer_begin_info.sType =
+            VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        if (vkBeginCommandBuffer(command_buffers[i],
+                                 &command_buffer_begin_info) != VK_SUCCESS) {
+            std::cerr << "failed to begin command buffer\n";
+            return 1;
+        }
+        vkCmdBindDescriptorSets(
+            command_buffers[i], VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout,
+            0, 1, &descriptor_sets[i], VK_NULL_HANDLE, VK_NULL_HANDLE);
+        vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_COMPUTE,
+                          pipeline);
+        VkImageMemoryBarrier begin_image_memory_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = VK_NULL_HANDLE,
+            .srcAccessMask = VK_NULL_HANDLE,
+            .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = queue_family_index,
+            .dstQueueFamilyIndex = queue_family_index,
+            .image = swapchain_images[i],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                 .baseMipLevel = VK_NULL_HANDLE,
+                                 .levelCount = 1,
+                                 .baseArrayLayer = VK_NULL_HANDLE,
+                                 .layerCount = 1}};
+        vkCmdPipelineBarrier(
+            command_buffers[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_NULL_HANDLE,
+            VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, 1,
+            &begin_image_memory_barrier);
+        vkCmdDispatch(command_buffers[i], w / specialization_data[0],
+                      h / specialization_data[1], 1);
+        VkImageMemoryBarrier end_image_memory_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = VK_NULL_HANDLE,
+            .srcAccessMask = VK_NULL_HANDLE,
+            .dstAccessMask = VK_NULL_HANDLE,
+            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = queue_family_index,
+            .dstQueueFamilyIndex = queue_family_index,
+            .image = swapchain_images[i],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                 .baseMipLevel = VK_NULL_HANDLE,
+                                 .levelCount = 1,
+                                 .baseArrayLayer = VK_NULL_HANDLE,
+                                 .layerCount = 1}};
+        vkCmdPipelineBarrier(
+            command_buffers[i], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_NULL_HANDLE,
+            VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, 1,
+            &end_image_memory_barrier);
+        if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
+            std::cerr << "failed to end command buffer\n";
+            return 1;
+        }
+    }
+
+    std::vector<VkSemaphore> available_semaphores{swapchain_image_views.size()};
+    std::vector<VkSemaphore> finished_semaphores{swapchain_image_views.size()};
+    std::vector<VkFence> in_flight_fences{swapchain_image_views.size()};
+    std::vector<VkFence> image_in_flight{swapchain_image_views.size(),
+                                         VK_NULL_HANDLE};
+
+    VkSemaphoreCreateInfo semaphore_info = {};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fence_info = {};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (auto i = 0; i < swapchain_image_views.size(); i++) {
+        if (vkCreateSemaphore(device.device, &semaphore_info, nullptr,
+                              &available_semaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(device.device, &semaphore_info, nullptr,
+                              &finished_semaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(device.device, &fence_info, nullptr,
+                          &in_flight_fences[i]) != VK_SUCCESS) {
+            std::cerr << "failed to create sync objects\n";
+            return 1;
+        }
+    }
     SDL_Event event;
     int quit = 0;
+    int index = 0;
     while (!quit) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -277,11 +382,70 @@ int main(int argc, char *argv[]) {
             case SDL_QUIT:
                 quit = 1;
                 break;
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
+                    event.window.windowID == SDL_GetWindowID(window))
+                    quit = 1;
+                break;
 
             default:
                 break;
             }
         }
+        vkWaitForFences(device.device, 1, &in_flight_fences[index], VK_TRUE,
+                        UINT64_MAX);
+
+        uint32_t image_index = 0;
+        VkResult result = vkAcquireNextImageKHR(
+            device.device, swapchain.swapchain, UINT64_MAX,
+            available_semaphores[index], VK_NULL_HANDLE, &image_index);
+
+        if (image_in_flight[image_index] != VK_NULL_HANDLE) {
+            vkWaitForFences(device.device, 1, &image_in_flight[image_index],
+                            VK_TRUE, UINT64_MAX);
+        }
+        image_in_flight[image_index] = in_flight_fences[index];
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore wait_semaphores[] = {available_semaphores[index]};
+        VkPipelineStageFlags wait_stages[] = {
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = wait_semaphores;
+        submitInfo.pWaitDstStageMask = wait_stages;
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &command_buffers[image_index];
+
+        VkSemaphore signal_semaphores[] = {finished_semaphores[index]};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signal_semaphores;
+
+        vkResetFences(device.device, 1, &in_flight_fences[index]);
+
+        if (vkQueueSubmit(queue, 1, &submitInfo, in_flight_fences[index]) !=
+            VK_SUCCESS) {
+            std::cerr << "failed to submit draw command buffer\n";
+            return -1; //"failed to submit draw command buffer
+        }
+
+        VkPresentInfoKHR present_info = {};
+        present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        present_info.waitSemaphoreCount = 1;
+        present_info.pWaitSemaphores = signal_semaphores;
+
+        VkSwapchainKHR swapChains[] = {swapchain.swapchain};
+        present_info.swapchainCount = 1;
+        present_info.pSwapchains = swapChains;
+
+        present_info.pImageIndices = &image_index;
+
+        result = vkQueuePresentKHR(queue, &present_info);
+
+        index = (index + 1) % swapchain_image_views.size();
     }
     return 0;
 }
