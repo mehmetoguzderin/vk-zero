@@ -4,6 +4,7 @@
 
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
 - [Clspv](https://github.com/google/clspv)
+  - On Windows, having `clspv` inside WSL is also acceptable
 
 ## Build
 
