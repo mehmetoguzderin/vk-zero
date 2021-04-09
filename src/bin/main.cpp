@@ -73,8 +73,8 @@ int main(int argc, char *argv[]) {
             command_buffers)) {
         return -1;
     }
-    int index = 0;
-    int quit = 0;
+    uint32_t index = 0;
+    uint32_t quit = 0;
     SDL_Event event;
     while (!quit) {
         while (SDL_PollEvent(&event)) {

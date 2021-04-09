@@ -86,7 +86,7 @@ std::optional<int> create_device(const vkb::Instance &instance,
     }
     volkLoadDevice(device.device);
     return {};
-};
+}
 
 std::optional<int> get_queue(const vkb::Device &device, VkQueue &queue,
                              uint32_t &queue_index) {

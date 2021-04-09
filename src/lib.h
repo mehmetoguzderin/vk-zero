@@ -43,7 +43,7 @@ inline uint32_t get_global_id(uint32_t dimindx) { return global_id[dimindx]; }
 
 #endif
 
-kernel void shared_kernel(global int *in, global int *out, int n) {
+kernel void shared_kernel(global const int *in, global int *out, int n) {
     for (int i = 0; i < n; ++i) {
         out[i] = in[i];
     }

@@ -33,6 +33,7 @@ bld/
 [Ll]ogs/
 out/
 target/
+cmake-build-*/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -391,7 +392,6 @@ _deps
 # having git ignore such leftovers. You can use `.git/info/exclude` to
 # configure your local ignore list.
 # FIXME: This needs cleanup.
-*~
 *.swp
 *.swo
 .#*
@@ -401,7 +401,6 @@ _deps
 .hgignore
 .idea
 *.iml
-__pycache__/
 *.py[cod]
 *$py.class
 .project
