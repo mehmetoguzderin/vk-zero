@@ -1,105 +1,27 @@
-﻿#include "lib.h"
-
-#include <cstdio>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
+﻿#include "main.h"
 
 int main(int argc, char *argv[]) {
-    if (auto result = volkInitialize(); result != VK_SUCCESS) {
-        std::cerr << "Failed to initialize Volk. Error: " << result << "\n";
-        return 1;
+    if (auto error = initialize()) {
+        return -1;
     }
-    if (auto result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS |
-                               SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
-        result < 0) {
-        std::cerr << "Failed to initialize SDL. Error: " << SDL_GetError()
-                  << "\n";
-        return 1;
-    }
-    auto app_name = "main";
-    auto window = SDL_CreateWindow(
-        app_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 512,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    uint32_t extensions_count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count, NULL);
-    std::vector<const char *> extensions{extensions_count};
-    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count,
-                                     extensions.data());
-    vkb::InstanceBuilder instance_builder{};
-    for (auto &extension : extensions) {
-        instance_builder.enable_extension(extension);
-    }
+    auto name = "main";
+    SDL_Window *window;
     vkb::Instance instance;
-    if (auto result = instance_builder.set_app_name(app_name)
-                          .require_api_version(1, 1)
-                          .use_default_debug_messenger()
-                          .request_validation_layers()
-                          .build();
-        !result) {
-        std::cerr << "Failed to create Vulkan instance. Error: "
-                  << result.error().message() << "\n";
-        return 1;
-    } else {
-        instance = result.value();
-    }
-    volkLoadInstance(instance.instance);
     VkSurfaceKHR surface;
-    if (auto result =
-            SDL_Vulkan_CreateSurface(window, instance.instance, &surface);
-        !result) {
-        std::cerr << "Failed to create surface."
-                  << "\n";
-        return 1;
-    }
-    vkb::PhysicalDevice physical_device;
-    if (auto result =
-            vkb::PhysicalDeviceSelector{instance}
-                .set_minimum_version(1, 1)
-                .add_required_extension(
-                    VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME)
-                .add_required_extension(VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME)
-                .set_surface(surface)
-                .select();
-        !result) {
-        std::cerr << result.error().message() << "\n";
-        return 1;
-    } else {
-        physical_device = result.value();
-    }
     vkb::Device device;
-    if (auto result = vkb::DeviceBuilder{physical_device}.build(); !result) {
-        std::cerr << result.error().message() << "\n";
-        return 1;
-    } else {
-        device = result.value();
+    if (auto error = create_window_instance_surface_device(
+            name, window, instance, surface, device)) {
+        return -1;
     }
-    volkLoadDevice(device.device);
     vkb::Swapchain swapchain;
-    if (auto result =
-            vkb::SwapchainBuilder{device}
-                .use_default_format_selection()
-                .add_fallback_format({VK_FORMAT_B8G8R8A8_UNORM,
-                                      VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-                .add_fallback_format({VK_FORMAT_R8G8B8A8_UNORM,
-                                      VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-                .add_format_feature_flags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
-                .add_image_usage_flags(VK_IMAGE_USAGE_STORAGE_BIT)
-                .build();
-        !result) {
-        std::cerr << result.error().message() << " " << result.vk_result()
-                  << "\n";
-        return 1;
-    } else {
-        swapchain = result.value();
+    std::vector<VkImage> images;
+    std::vector<VkImageView> image_views;
+    if (auto error = create_swapchain(device, swapchain, images, image_views)) {
+        return -1;
     }
-    auto swapchain_images = swapchain.get_images().value();
-    auto swapchain_image_views = swapchain.get_image_views().value();
     VkDescriptorPoolSize descriptor_pool_size{
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = (uint32_t)swapchain_image_views.size()};
+        .descriptorCount = (uint32_t)image_views.size()};
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
@@ -128,7 +50,7 @@ int main(int argc, char *argv[]) {
         .bindingCount = 1,
         .pBindings = &descriptor_set_layout_binding};
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts{
-        swapchain_image_views.size()};
+        image_views.size()};
     if (vkCreateDescriptorSetLayout(
             device.device, &descriptor_set_layout_create_info, VK_NULL_HANDLE,
             descriptor_set_layouts.data()) != VK_SUCCESS) {
@@ -143,9 +65,9 @@ int main(int argc, char *argv[]) {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .descriptorPool = descriptor_pool,
-        .descriptorSetCount = (uint32_t)swapchain_image_views.size(),
+        .descriptorSetCount = (uint32_t)image_views.size(),
         .pSetLayouts = descriptor_set_layouts.data()};
-    std::vector<VkDescriptorSet> descriptor_sets{swapchain_image_views.size()};
+    std::vector<VkDescriptorSet> descriptor_sets{image_views.size()};
     if (vkAllocateDescriptorSets(device.device, &descriptor_set_allocate_info,
                                  descriptor_sets.data()) != VK_SUCCESS) {
         std::cerr << "failed to allocate descriptor sets"
@@ -153,11 +75,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     std::vector<VkDescriptorImageInfo> descriptor_image_info{
-        swapchain_image_views.size()};
-    std::vector<VkWriteDescriptorSet> write_decriptor_sets{
-        swapchain_image_views.size()};
+        image_views.size()};
+    std::vector<VkWriteDescriptorSet> write_decriptor_sets{image_views.size()};
     for (auto i = 0; i < descriptor_set_layouts.size(); ++i) {
-        descriptor_image_info[i] = {.imageView = swapchain_image_views[i],
+        descriptor_image_info[i] = {.imageView = image_views[i],
                                     .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
         write_decriptor_sets[i] = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -171,7 +92,7 @@ int main(int argc, char *argv[]) {
             .pBufferInfo = VK_NULL_HANDLE,
             .pTexelBufferView = VK_NULL_HANDLE};
     }
-    vkUpdateDescriptorSets(device.device, swapchain_image_views.size(),
+    vkUpdateDescriptorSets(device.device, image_views.size(),
                            write_decriptor_sets.data(), 0, VK_NULL_HANDLE);
     std::ifstream file("src/lib.spv", std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
@@ -265,7 +186,7 @@ int main(int argc, char *argv[]) {
         std::cerr << "failed to create command pool\n";
         return 1;
     }
-    std::vector<VkCommandBuffer> command_buffers{swapchain_image_views.size()};
+    std::vector<VkCommandBuffer> command_buffers{image_views.size()};
     VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
     command_buffer_allocate_info.sType =
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -305,7 +226,7 @@ int main(int argc, char *argv[]) {
             .newLayout = VK_IMAGE_LAYOUT_GENERAL,
             .srcQueueFamilyIndex = queue_family_index,
             .dstQueueFamilyIndex = queue_family_index,
-            .image = swapchain_images[i],
+            .image = images[i],
             .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                                  .baseMipLevel = VK_NULL_HANDLE,
                                  .levelCount = 1,
@@ -327,7 +248,7 @@ int main(int argc, char *argv[]) {
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcQueueFamilyIndex = queue_family_index,
             .dstQueueFamilyIndex = queue_family_index,
-            .image = swapchain_images[i],
+            .image = images[i],
             .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                                  .baseMipLevel = VK_NULL_HANDLE,
                                  .levelCount = 1,
@@ -344,11 +265,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    std::vector<VkSemaphore> available_semaphores{swapchain_image_views.size()};
-    std::vector<VkSemaphore> finished_semaphores{swapchain_image_views.size()};
-    std::vector<VkFence> in_flight_fences{swapchain_image_views.size()};
-    std::vector<VkFence> image_in_flight{swapchain_image_views.size(),
-                                         VK_NULL_HANDLE};
+    std::vector<VkSemaphore> available_semaphores{image_views.size()};
+    std::vector<VkSemaphore> finished_semaphores{image_views.size()};
+    std::vector<VkFence> in_flight_fences{image_views.size()};
+    std::vector<VkFence> image_in_flight{image_views.size(), VK_NULL_HANDLE};
 
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -357,7 +277,7 @@ int main(int argc, char *argv[]) {
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (auto i = 0; i < swapchain_image_views.size(); i++) {
+    for (auto i = 0; i < image_views.size(); i++) {
         if (vkCreateSemaphore(device.device, &semaphore_info, nullptr,
                               &available_semaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(device.device, &semaphore_info, nullptr,
@@ -445,7 +365,8 @@ int main(int argc, char *argv[]) {
 
         result = vkQueuePresentKHR(queue, &present_info);
 
-        index = (index + 1) % swapchain_image_views.size();
+        index = (index + 1) % image_views.size();
     }
+    SDL_Quit();
     return 0;
 }
