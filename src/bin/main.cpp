@@ -37,26 +37,10 @@ int main(int argc, char *argv[]) {
                   << "\n";
         return 1;
     }
-    VkDescriptorSetLayoutBinding descriptor_set_layout_binding{
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-        .pImmutableSamplers = VK_NULL_HANDLE};
-    VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .bindingCount = 1,
-        .pBindings = &descriptor_set_layout_binding};
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts{
         image_views.size()};
-    if (vkCreateDescriptorSetLayout(
-            device.device, &descriptor_set_layout_create_info, VK_NULL_HANDLE,
-            descriptor_set_layouts.data()) != VK_SUCCESS) {
-        std::cerr << "failed to create descriptor set layout"
-                  << "\n";
-        return 1;
+    if (auto error = create_set_layout(device, descriptor_set_layouts[0])) {
+        return -1;
     }
     for (auto i = 1; i < descriptor_set_layouts.size(); ++i) {
         descriptor_set_layouts[i] = descriptor_set_layouts[0];

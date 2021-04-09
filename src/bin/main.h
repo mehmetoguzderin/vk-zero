@@ -105,3 +105,25 @@ std::optional<int> create_swapchain(vkb::Device &device,
     image_views = swapchain.get_image_views().value();
     return {};
 }
+
+std::optional<int>
+create_set_layout(vkb::Device &device,
+                  VkDescriptorSetLayout &descriptor_set_layout) {
+    VkDescriptorSetLayoutBinding binding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .pImmutableSamplers = VK_NULL_HANDLE};
+    VkDescriptorSetLayoutCreateInfo create_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .bindingCount = 1,
+        .pBindings = &binding};
+    if (vkCreateDescriptorSetLayout(device.device, &create_info, VK_NULL_HANDLE,
+                                    &descriptor_set_layout) != VK_SUCCESS) {
+        return -1;
+    }
+    return {};
+}
