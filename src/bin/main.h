@@ -421,7 +421,7 @@ queue_submit(const vkb::Device &device, const VkQueue &queue,
              const std::vector<VkSemaphore> &signal_semaphores,
              const std::vector<VkCommandBuffer> &command_buffers,
              const uint32_t &index, std::vector<VkFence> &wait_fences) {
-    if (vkWaitForFences(device.device, 1, &wait_fences[index], VK_TRUE,
+    if (vkWaitForFences(device.device, 1, &signal_fences[index], VK_TRUE,
                         UINT64_MAX) != VK_SUCCESS) {
         return -1;
     }
