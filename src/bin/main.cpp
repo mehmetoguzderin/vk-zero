@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = 0,
-        .maxSets = 3,
+        .maxSets = (uint32_t)image_views.size(),
         .poolSizeCount = 1,
         .pPoolSizes = &descriptor_pool_size};
     VkDescriptorPool descriptor_pool;
