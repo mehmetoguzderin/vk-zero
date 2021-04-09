@@ -91,15 +91,80 @@ int main(int argc, char *argv[]) {
                 if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
                     event.window.windowID == SDL_GetWindowID(window))
                     quit = 1;
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    vkDeviceWaitIdle(device.device);
+                    vkFreeCommandBuffers(device.device, command_pool,
+                                         command_buffers.size(),
+                                         command_buffers.data());
+                    vkDestroyDescriptorPool(device.device, descriptor_pool,
+                                            VK_NULL_HANDLE);
+                    if (auto error = create_swapchain_semaphores_fences(
+                            device, swapchain, images, image_views,
+                            signal_fences, wait_semaphores, signal_semaphores,
+                            wait_fences, true)) {
+                        return -1;
+                    }
+                    if (auto error = create_descriptor_pool(device, swapchain,
+                                                            descriptor_pool)) {
+                        return -1;
+                    }
+                    if (auto error = allocate_descriptor_sets(
+                            device, swapchain, image_views, set_layout,
+                            descriptor_pool, descriptor_sets)) {
+                        return -1;
+                    }
+                    if (auto error = allocate_command_buffers(
+                            window, device, queue_index, command_pool,
+                            pipeline_layout, pipeline, swapchain, images,
+                            image_views, descriptor_sets, command_buffers)) {
+                        return -1;
+                    }
+                    index = 0;
+                }
                 break;
 
             default:
                 break;
             }
         }
-        queue_submit(device, queue, swapchain, signal_fences, wait_semaphores,
-                     signal_semaphores, command_buffers, index, wait_fences);
-        index = (index + 1) % swapchain.image_count;
+        if (auto error = queue_submit(device, queue, swapchain, signal_fences,
+                                      wait_semaphores, signal_semaphores,
+                                      command_buffers, index, wait_fences)) {
+            if (error == 0) {
+                vkDeviceWaitIdle(device.device);
+                vkFreeCommandBuffers(device.device, command_pool,
+                                     command_buffers.size(),
+                                     command_buffers.data());
+                vkDestroyDescriptorPool(device.device, descriptor_pool,
+                                        VK_NULL_HANDLE);
+                if (auto error = create_swapchain_semaphores_fences(
+                        device, swapchain, images, image_views, signal_fences,
+                        wait_semaphores, signal_semaphores, wait_fences,
+                        true)) {
+                    return -1;
+                }
+                if (auto error = create_descriptor_pool(device, swapchain,
+                                                        descriptor_pool)) {
+                    return -1;
+                }
+                if (auto error = allocate_descriptor_sets(
+                        device, swapchain, image_views, set_layout,
+                        descriptor_pool, descriptor_sets)) {
+                    return -1;
+                }
+                if (auto error = allocate_command_buffers(
+                        window, device, queue_index, command_pool,
+                        pipeline_layout, pipeline, swapchain, images,
+                        image_views, descriptor_sets, command_buffers)) {
+                    return -1;
+                }
+                index = 0;
+            } else {
+                return -1;
+            }
+        } else {
+            index = (index + 1) % swapchain.image_count;
+        }
     }
     SDL_Quit();
     return 0;

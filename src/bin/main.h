@@ -33,6 +33,7 @@ std::optional<int> create_window_instance_surface(const char *&name,
     if (!window) {
         return -1;
     }
+    SDL_SetWindowMinimumSize(window, 16, 16);
     uint32_t extensions_count = 0;
     SDL_Vulkan_GetInstanceExtensions(window, &extensions_count, NULL);
     std::vector<const char *> extensions{extensions_count};
@@ -384,8 +385,8 @@ std::optional<int> allocate_command_buffers(
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_NULL_HANDLE,
             VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, 1,
             &begin_image_memory_barrier);
-        vkCmdDispatch(command_buffers[i], width / GROUP_SIZE,
-                      height / GROUP_SIZE, 1);
+        vkCmdDispatch(command_buffers[i], width / GROUP_SIZE + 1,
+                      height / GROUP_SIZE + 1, 1);
         VkImageMemoryBarrier end_image_memory_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = VK_NULL_HANDLE,
