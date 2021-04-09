@@ -4,9 +4,6 @@
 #ifdef VK_ZERO_CPU
 
 #define VK_NO_PROTOTYPES
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include "vulkan/vulkan.hpp"
-
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
