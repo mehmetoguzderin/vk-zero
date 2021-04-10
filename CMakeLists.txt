@@ -89,6 +89,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
             --cl-std=CLC++
             --inline-entry-points
             --uniform-workgroup-size
+            --pod-ubo
             -o "lib.spv"
             "lib.h"
     )
@@ -101,6 +102,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
             --cl-std=CLC++
             --inline-entry-points
             --uniform-workgroup-size
+            --pod-ubo
             -o "lib.spv"
             "lib.h"
     )
@@ -113,6 +115,7 @@ else()
           --cl-std=CLC++
           --inline-entry-points
           --uniform-workgroup-size
+          --pod-ubo
           -o "lib.spv"
           "lib.h"
   )
