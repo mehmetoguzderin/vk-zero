@@ -88,6 +88,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
             --spv-version=1.3
             --cl-std=CLC++
             --inline-entry-points
+            --uniform-workgroup-size
             -o "lib.spv"
             "lib.h"
     )
@@ -99,6 +100,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
             --spv-version=1.3
             --cl-std=CLC++
             --inline-entry-points
+            --uniform-workgroup-size
             -o "lib.spv"
             "lib.h"
     )
@@ -110,6 +112,7 @@ else()
           --spv-version=1.3
           --cl-std=CLC++
           --inline-entry-points
+          --uniform-workgroup-size
           -o "lib.spv"
           "lib.h"
   )
