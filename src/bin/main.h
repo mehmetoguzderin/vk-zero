@@ -136,14 +136,19 @@ create_set_pipeline_layout(const vkb::Device &device,
                                     &set_layout) != VK_SUCCESS) {
         return -1;
     }
+    VkPushConstantRange push_constant_ranges{
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(uint32_t) * 3,
+    };
     VkPipelineLayoutCreateInfo pipeline_create_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = VK_NULL_HANDLE,
         .setLayoutCount = 1,
         .pSetLayouts = &set_layout,
-        .pushConstantRangeCount = VK_NULL_HANDLE,
-        .pPushConstantRanges = VK_NULL_HANDLE};
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &push_constant_ranges};
     if (vkCreatePipelineLayout(device.device, &pipeline_create_info,
                                VK_NULL_HANDLE,
                                &pipeline_layout) != VK_SUCCESS) {

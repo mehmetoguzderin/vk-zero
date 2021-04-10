@@ -125,6 +125,7 @@ add_custom_command(
                            "lib.spv"
                            "${CMAKE_BINARY_DIR}/src/lib.spv"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  USES_TERMINAL
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.h"
   VERBATIM
   COMMAND_EXPAND_LISTS
