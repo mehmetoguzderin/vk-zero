@@ -12,14 +12,14 @@
 
 ### Building (CLI)
 
-#### Debug Profile
+#### Debug Profile
 
 ```sh
 cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug
 ```
 
-#### Release Profile
+#### Release Profile
 
 ```sh
 cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
