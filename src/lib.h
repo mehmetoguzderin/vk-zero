@@ -44,6 +44,14 @@ inline uint32_t get_global_id(uint32_t dimindx) { return GLOBAL_ID[dimindx]; }
 
 #endif
 
+template <typename T> struct prefix_exclusive_sum_t4 {
+    T data[4];
+
+    prefix_exclusive_sum_t4 prefix_exclusive_sum() {
+        return {{0, data[0], data[0] + data[1], data[0] + data[1] + data[2]}};
+    }
+};
+
 kernel void shared_kernel(global const int *in, global int *out, int n) {
     for (int i = 0; i < n; ++i) {
         out[i] = in[i];
@@ -60,7 +68,11 @@ kernel void device_kernel(write_only image2d_t output) {
         return;
     write_imagef(output, ivec2(x, y),
                  vec4((float)x / (float)dimensions.x,
-                      (float)y / (float)dimensions.y, 1.f, 1.f));
+                      (float)y / (float)dimensions.y,
+                      prefix_exclusive_sum_t4<float>{{0.25f, 0.f, 0.25f, 0.f}}
+                          .prefix_exclusive_sum()
+                          .data[3],
+                      1.f));
 }
 
 #endif

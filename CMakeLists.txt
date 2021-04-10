@@ -86,6 +86,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
       CLSPV_COMMAND
       clspv -O=3
             --spv-version=1.3
+            --cl-std=CLC++
+            --inline-entry-points
             -o "lib.spv"
             "lib.h"
     )
@@ -95,6 +97,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
       wsl
       clspv -O=3
             --spv-version=1.3
+            --cl-std=CLC++
+            --inline-entry-points
             -o "lib.spv"
             "lib.h"
     )
@@ -104,6 +108,8 @@ else()
     CLSPV_COMMAND
     clspv -O=3
           --spv-version=1.3
+          --cl-std=CLC++
+          --inline-entry-points
           -o "lib.spv"
           "lib.h"
   )
