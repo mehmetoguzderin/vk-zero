@@ -189,6 +189,7 @@ int main(int argc, char *argv[]) {
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, VK_NULL_HANDLE);
     vkb::destroy_instance(instance);
+    SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }
