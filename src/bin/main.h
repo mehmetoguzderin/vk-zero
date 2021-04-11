@@ -72,6 +72,11 @@ std::optional<int> create_device(const vkb::Instance &instance,
                                  vkb::Device &device) {
     if (auto result = vkb::PhysicalDeviceSelector{instance}
                           .set_minimum_version(1, 1)
+                          .set_required_features(
+                              {.shaderStorageImageWriteWithoutFormat = VK_TRUE})
+                          .set_required_features_11(
+                              {.variablePointersStorageBuffer = VK_TRUE,
+                               .variablePointers = VK_TRUE})
                           .add_desired_extension("VK_KHR_portability_subset")
                           .set_surface(surface)
                           .select();
@@ -80,9 +85,6 @@ std::optional<int> create_device(const vkb::Instance &instance,
     } else {
         physical_device = result.value();
     }
-    physical_device.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
-    physical_device.features_11.variablePointersStorageBuffer = VK_TRUE;
-    physical_device.features_11.variablePointers = VK_TRUE;
     if (auto result = vkb::DeviceBuilder{physical_device}.build(); !result) {
         return -1;
     } else {
