@@ -221,7 +221,6 @@ std::optional<int> create_swapchain_semaphores_fences(
     std::vector<VkFence> &wait_fences, bool destroy = false) {
     auto builder =
         vkb::SwapchainBuilder{device}
-            .use_default_format_selection()
             .add_fallback_format(
                 {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
             .add_fallback_format(
