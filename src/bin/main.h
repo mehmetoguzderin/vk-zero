@@ -45,15 +45,14 @@ std::optional<int> create_window_instance_surface(const char *&name,
     }
 #if !(NDEBUG)
     instance_builder.request_validation_layers();
-    instance_builder.use_default_debug_messenger()
+    instance_builder.use_default_debug_messenger();
 #endif
-        if (auto result = instance_builder.set_app_name(name)
-                              .require_api_version(1, 1)
-                              .build();
-            !result) {
+    if (auto result = instance_builder.set_app_name(name)
+                          .require_api_version(1, 1)
+                          .build();
+        !result) {
         return -1;
-    }
-    else {
+    } else {
         instance = result.value();
     }
     volkLoadInstance(instance.instance);
