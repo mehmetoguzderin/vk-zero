@@ -74,6 +74,7 @@ std::optional<int> create_device(const vkb::Instance &instance,
                 .add_required_extension(
                     VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME)
                 .add_required_extension(VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME)
+                .add_desired_extension("VK_KHR_portability_subset")
                 .set_surface(surface)
                 .select();
         !result) {
@@ -81,6 +82,7 @@ std::optional<int> create_device(const vkb::Instance &instance,
     } else {
         physical_device = result.value();
     }
+    physical_device.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
     if (auto result = vkb::DeviceBuilder{physical_device}.build(); !result) {
         return -1;
     } else {
