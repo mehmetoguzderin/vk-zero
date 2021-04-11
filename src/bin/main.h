@@ -237,6 +237,7 @@ std::optional<int> create_swapchain_semaphores_fences(
     if (auto result = builder.build(); !result) {
         return -1;
     } else {
+        swapchain.destroy_image_views(image_views);
         vkb::destroy_swapchain(swapchain);
         swapchain = result.value();
     }
