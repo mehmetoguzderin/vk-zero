@@ -35,7 +35,7 @@ std::optional<int> create_window_instance_surface(const char *&name,
     }
     SDL_SetWindowMinimumSize(window, 16, 16);
     uint32_t extensions_count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count, NULL);
+    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count, nullptr);
     std::vector<const char *> extensions{extensions_count};
     SDL_Vulkan_GetInstanceExtensions(window, &extensions_count,
                                      extensions.data());
@@ -68,21 +68,19 @@ std::optional<int> create_device(const vkb::Instance &instance,
                                  const VkSurfaceKHR &surface,
                                  vkb::PhysicalDevice physical_device,
                                  vkb::Device &device) {
-    if (auto result =
-            vkb::PhysicalDeviceSelector{instance}
-                .set_minimum_version(1, 1)
-                .add_required_extension(
-                    VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME)
-                .add_required_extension(VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME)
-                .add_desired_extension("VK_KHR_portability_subset")
-                .set_surface(surface)
-                .select();
+    if (auto result = vkb::PhysicalDeviceSelector{instance}
+                          .set_minimum_version(1, 1)
+                          .add_desired_extension("VK_KHR_portability_subset")
+                          .set_surface(surface)
+                          .select();
         !result) {
         return -1;
     } else {
         physical_device = result.value();
     }
     physical_device.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+    physical_device.features_11.variablePointersStorageBuffer = VK_TRUE;
+    physical_device.features_11.variablePointers = VK_TRUE;
     if (auto result = vkb::DeviceBuilder{physical_device}.build(); !result) {
         return -1;
     } else {
@@ -360,6 +358,8 @@ std::optional<int> allocate_command_buffers(
         VkCommandBufferBeginInfo command_buffer_begin_info = {};
         command_buffer_begin_info.sType =
             VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        command_buffer_begin_info.flags =
+            VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         if (vkBeginCommandBuffer(command_buffers[i],
                                  &command_buffer_begin_info) != VK_SUCCESS) {
             return -1;
