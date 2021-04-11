@@ -6,6 +6,8 @@
 
 - [CMake](https://cmake.org)
   - On Windows, recent Visual Studio versions can open CMake projects directly, which you can use instead.
+- [Clang](https://clang.llvm.org)
+  - On Windows, recent Visual Studio versions can install Clang, which you can use instead.
 - [Clspv](https://github.com/google/clspv)
   - On Windows, having `clspv` inside WSL is also acceptable.
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home)
