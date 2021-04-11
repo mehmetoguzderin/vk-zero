@@ -166,6 +166,29 @@ int main(int argc, char *argv[]) {
             index = (index + 1) % swapchain.image_count;
         }
     }
+    vkDeviceWaitIdle(device.device);
+    vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
+                         command_buffers.data());
+    vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+    for (auto &semaphore : signal_semaphores) {
+        vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+    }
+    for (auto &semaphore : wait_semaphores) {
+        vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+    }
+    for (auto &fence : signal_fences) {
+        vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
+    }
+    swapchain.destroy_image_views(image_views);
+    vkb::destroy_swapchain(swapchain);
+    vkDestroyPipeline(device.device, pipeline, VK_NULL_HANDLE);
+    vkDestroyShaderModule(device.device, shader_module, VK_NULL_HANDLE);
+    vkDestroyPipelineLayout(device.device, pipeline_layout, VK_NULL_HANDLE);
+    vkDestroyDescriptorSetLayout(device.device, set_layout, VK_NULL_HANDLE);
+    vkDestroyCommandPool(device.device, command_pool, VK_NULL_HANDLE);
+    vkb::destroy_device(device);
+    vkDestroySurfaceKHR(instance.instance, surface, VK_NULL_HANDLE);
+    vkb::destroy_instance(instance);
     SDL_Quit();
     return 0;
 }
