@@ -228,7 +228,9 @@ std::optional<int> create_swapchain_semaphores_fences(
             .add_fallback_format(
                 {VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
             .add_format_feature_flags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
-            .add_image_usage_flags(VK_IMAGE_USAGE_STORAGE_BIT);
+            .add_format_feature_flags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+            .add_image_usage_flags(VK_IMAGE_USAGE_STORAGE_BIT)
+            .add_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     if (destroy) {
         builder.set_old_swapchain(swapchain);
     }
