@@ -66,6 +66,13 @@ set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
 FetchContent_MakeAvailable(tinygltf)
 
 FetchContent_Declare(
+  vma
+  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+  GIT_TAG        master
+)
+FetchContent_MakeAvailable(vma)
+
+FetchContent_Declare(
   volk
   GIT_REPOSITORY https://github.com/zeux/volk
   GIT_TAG        master
@@ -143,6 +150,7 @@ add_custom_target(
 
 include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 include_directories(${tinygltf_SOURCE_DIR})
+include_directories(${vma_SOURCE_DIR}/src)
 include_directories("src")
 link_libraries(SDL2-static)
 link_libraries(SDL2main)

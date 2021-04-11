@@ -4,13 +4,17 @@
 #ifdef VK_ZERO_CPU
 
 #define VK_NO_PROTOTYPES
-#include "SDL.h"
-#include "SDL_vulkan.h"
+#include "volk.h"
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#define VMA_VULKAN_VERSION 1001000
+#include "vk_mem_alloc.h"
 
 #include "VkBootstrap.h"
 
-#include "glm/glm.hpp"
-#include "glm/gtx/compatibility.hpp"
+#include "SDL.h"
+#include "SDL_vulkan.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -21,7 +25,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "tiny_gltf.h"
 
-#include "volk.h"
+#include "glm/glm.hpp"
+#include "glm/gtx/compatibility.hpp"
+using namespace glm;
 
 #define global
 #define kernel
