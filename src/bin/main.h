@@ -358,8 +358,6 @@ std::optional<int> allocate_command_buffers(
         VkCommandBufferBeginInfo command_buffer_begin_info = {};
         command_buffer_begin_info.sType =
             VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        command_buffer_begin_info.flags =
-            VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         if (vkBeginCommandBuffer(command_buffers[i],
                                  &command_buffer_begin_info) != VK_SUCCESS) {
             return -1;
