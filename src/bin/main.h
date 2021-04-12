@@ -270,6 +270,13 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     if (auto result = builder.build(); !result) {
         return -1;
     } else {
+        if (destroy) {
+            for (auto &framebuffer : framebuffers) {
+                vkDestroyFramebuffer(device.device, framebuffer,
+                                     VK_NULL_HANDLE);
+            }
+            vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
+        }
         swapchain.destroy_image_views(image_views);
         vkb::destroy_swapchain(swapchain);
         swapchain = result.value();
@@ -277,10 +284,6 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     images = swapchain.get_images().value();
     image_views = swapchain.get_image_views().value();
     if (destroy) {
-        for (auto &framebuffer : framebuffers) {
-            vkDestroyFramebuffer(device.device, framebuffer, VK_NULL_HANDLE);
-        }
-        vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
         for (auto &fence : signal_fences) {
             vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
         }
