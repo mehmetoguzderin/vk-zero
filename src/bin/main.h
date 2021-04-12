@@ -218,14 +218,14 @@ std::optional<int> create_pipeline(const vkb::Device &device,
     return {};
 }
 
-std::optional<int> create_swapchain_semaphores_fences_render_pass(
+std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     const vkb::Device &device, vkb::Swapchain &swapchain,
     std::vector<VkImage> &images, std::vector<VkImageView> &image_views,
     std::vector<VkFence> &signal_fences,
     std::vector<VkSemaphore> &wait_semaphores,
     std::vector<VkSemaphore> &signal_semaphores,
     std::vector<VkFence> &wait_fences, VkRenderPass &render_pass,
-    bool destroy = false) {
+    std::vector<VkFramebuffer> &framebuffers, bool destroy = false) {
     auto builder =
         vkb::SwapchainBuilder{device}
             .add_fallback_format(
@@ -249,6 +249,9 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass(
     images = swapchain.get_images().value();
     image_views = swapchain.get_image_views().value();
     if (destroy) {
+        for (auto &framebuffer : framebuffers) {
+            vkDestroyFramebuffer(device.device, framebuffer, VK_NULL_HANDLE);
+        }
         vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
         for (auto &fence : signal_fences) {
             vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
@@ -282,11 +285,11 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass(
     VkAttachmentDescription attachment = {
         .format = swapchain.image_format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
     VkAttachmentReference color_attachment = {
         .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
@@ -313,6 +316,21 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass(
     if (vkCreateRenderPass(device.device, &create_info, VK_NULL_HANDLE,
                            &render_pass) != VK_SUCCESS) {
         return -1;
+    }
+    framebuffers = std::vector<VkFramebuffer>{swapchain.image_count};
+    for (auto i = 0; i < swapchain.image_count; i++) {
+        VkFramebufferCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass = render_pass,
+            .attachmentCount = 1,
+            .pAttachments = &image_views[i],
+            .width = swapchain.extent.width,
+            .height = swapchain.extent.height,
+            .layers = 1};
+        if (vkCreateFramebuffer(device.device, &create_info, VK_NULL_HANDLE,
+                                &framebuffers[i]) != VK_SUCCESS) {
+            return -1;
+        }
     }
     return {};
 }

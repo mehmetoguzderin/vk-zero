@@ -400,6 +400,7 @@ _deps
 .hg/
 .hgignore
 .idea
+.vscode
 *.iml
 *.py[cod]
 *$py.class

@@ -50,10 +50,13 @@ int main(int argc, char *argv[]) {
     std::vector<VkFence> signal_fences;
     std::vector<VkSemaphore> wait_semaphores, signal_semaphores;
     std::vector<VkFence> wait_fences;
+    std::vector<VkFramebuffer> framebuffers;
     VkRenderPass render_pass;
-    if (auto error = create_swapchain_semaphores_fences_render_pass(
-            device, swapchain, images, image_views, signal_fences,
-            wait_semaphores, signal_semaphores, wait_fences, render_pass)) {
+    if (auto error =
+            create_swapchain_semaphores_fences_render_pass_framebuffers(
+                device, swapchain, images, image_views, signal_fences,
+                wait_semaphores, signal_semaphores, wait_fences, render_pass,
+                framebuffers)) {
         return -1;
     }
     VkDescriptorPool descriptor_pool;
@@ -82,10 +85,11 @@ int main(int argc, char *argv[]) {
         vkFreeCommandBuffers(device.device, command_pool,
                              command_buffers.size(), command_buffers.data());
         vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
-        if (auto error = create_swapchain_semaphores_fences_render_pass(
-                device, swapchain, images, image_views, signal_fences,
-                wait_semaphores, signal_semaphores, wait_fences, render_pass,
-                true)) {
+        if (auto error =
+                create_swapchain_semaphores_fences_render_pass_framebuffers(
+                    device, swapchain, images, image_views, signal_fences,
+                    wait_semaphores, signal_semaphores, wait_fences,
+                    render_pass, framebuffers, true)) {
             return -1;
         }
         if (auto error =
@@ -175,7 +179,7 @@ int main(int argc, char *argv[]) {
                         .srcAccessMask = VK_NULL_HANDLE,
                         .dstAccessMask = VK_NULL_HANDLE,
                         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         .srcQueueFamilyIndex = queue_index,
                         .dstQueueFamilyIndex = queue_index,
                         .image = images[index],
@@ -187,9 +191,32 @@ int main(int argc, char *argv[]) {
                                              .layerCount = 1}};
                     vkCmdPipelineBarrier(
                         command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_NULL_HANDLE,
+                        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_NULL_HANDLE,
                         VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,
                         VK_NULL_HANDLE, 1, &end_image_memory_barrier);
+                    VkViewport viewport = {
+                        .x = 0.0f,
+                        .y = 0.0f,
+                        .width = (float)swapchain.extent.width,
+                        .height = (float)swapchain.extent.height,
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f};
+                    vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+                    VkRect2D scissor = {.offset = {0, 0},
+                                        .extent = swapchain.extent};
+                    vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+                    VkClearValue clear_values{{{0.0f, 0.0f, 0.0f, 1.0f}}};
+                    VkRenderPassBeginInfo begin_info = {
+                        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                        .renderPass = render_pass,
+                        .framebuffer = framebuffers[index],
+                        .renderArea.offset = {0, 0},
+                        .renderArea.extent = swapchain.extent,
+                        .clearValueCount = 1,
+                        .pClearValues = &clear_values};
+                    vkCmdBeginRenderPass(command_buffer, &begin_info,
+                                         VK_SUBPASS_CONTENTS_INLINE);
+                    vkCmdEndRenderPass(command_buffer);
                     return {};
                 })) {
             if (error == 0) {
@@ -207,6 +234,9 @@ int main(int argc, char *argv[]) {
     vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
                          command_buffers.data());
     vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+    for (auto &framebuffer : framebuffers) {
+        vkDestroyFramebuffer(device.device, framebuffer, VK_NULL_HANDLE);
+    }
     vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
     for (auto &semaphore : signal_semaphores) {
         vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
