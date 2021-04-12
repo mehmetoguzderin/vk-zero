@@ -127,9 +127,67 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
-        if (auto error = queue_submit(device, queue, swapchain, signal_fences,
-                                      wait_semaphores, signal_semaphores,
-                                      command_buffers, index, wait_fences)) {
+        if (auto error = queue_submit(
+                device, queue, swapchain, signal_fences,
+                wait_semaphores, signal_semaphores, command_buffers, index,
+                wait_fences,
+                [&](const uint32_t &index,
+                    const VkCommandBuffer &command_buffer)
+                    -> std::optional<int> {
+                    int width, height;
+                    SDL_Vulkan_GetDrawableSize(window, &width, &height);
+                    vkCmdBindPipeline(command_buffer,
+                                      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+                    vkCmdBindDescriptorSets(
+                        command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        pipeline_layout, 0, 1, &descriptor_sets[index],
+                        VK_NULL_HANDLE, VK_NULL_HANDLE);
+                    VkImageMemoryBarrier begin_image_memory_barrier{
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                        .pNext = VK_NULL_HANDLE,
+                        .srcAccessMask = VK_NULL_HANDLE,
+                        .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                        .srcQueueFamilyIndex = queue_index,
+                        .dstQueueFamilyIndex = queue_index,
+                        .image = images[index],
+                        .subresourceRange = {.aspectMask =
+                                                 VK_IMAGE_ASPECT_COLOR_BIT,
+                                             .baseMipLevel = VK_NULL_HANDLE,
+                                             .levelCount = 1,
+                                             .baseArrayLayer = VK_NULL_HANDLE,
+                                             .layerCount = 1}};
+                    vkCmdPipelineBarrier(
+                        command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_NULL_HANDLE,
+                        VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,
+                        VK_NULL_HANDLE, 1, &begin_image_memory_barrier);
+                    vkCmdDispatch(command_buffer, width / GROUP_SIZE + 1,
+                                  height / GROUP_SIZE + 1, 1);
+                    VkImageMemoryBarrier end_image_memory_barrier{
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                        .pNext = VK_NULL_HANDLE,
+                        .srcAccessMask = VK_NULL_HANDLE,
+                        .dstAccessMask = VK_NULL_HANDLE,
+                        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        .srcQueueFamilyIndex = queue_index,
+                        .dstQueueFamilyIndex = queue_index,
+                        .image = images[index],
+                        .subresourceRange = {.aspectMask =
+                                                 VK_IMAGE_ASPECT_COLOR_BIT,
+                                             .baseMipLevel = VK_NULL_HANDLE,
+                                             .levelCount = 1,
+                                             .baseArrayLayer = VK_NULL_HANDLE,
+                                             .layerCount = 1}};
+                    vkCmdPipelineBarrier(
+                        command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_NULL_HANDLE,
+                        VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,
+                        VK_NULL_HANDLE, 1, &end_image_memory_barrier);
+                    return {};
+                })) {
             if (error == 0) {
                 vkDeviceWaitIdle(device.device);
                 vkFreeCommandBuffers(device.device, command_pool,

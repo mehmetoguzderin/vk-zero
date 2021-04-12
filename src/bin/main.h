@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdio>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -109,9 +110,10 @@ std::optional<int> get_queue(const vkb::Device &device, VkQueue &queue,
 std::optional<int> create_command_pool(const vkb::Device &device,
                                        const uint32_t &queue_index,
                                        VkCommandPool &command_pool) {
-    VkCommandPoolCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    create_info.queueFamilyIndex = queue_index;
+    VkCommandPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = queue_index};
     if (vkCreateCommandPool(device.device, &create_info, VK_NULL_HANDLE,
                             &command_pool) != VK_SUCCESS) {
         return -1;
@@ -167,10 +169,10 @@ std::optional<int> create_shader_module(const vkb::Device &device,
     std::vector<char> code(file_size);
     file.seekg(0);
     file.read(code.data(), static_cast<std::streamsize>(file_size));
-    VkShaderModuleCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
+    VkShaderModuleCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = code.size(),
+        .pCode = reinterpret_cast<const uint32_t *>(code.data())};
     if (vkCreateShaderModule(device.device, &create_info, VK_NULL_HANDLE,
                              &shader_module) != VK_SUCCESS) {
         return -1;
@@ -260,11 +262,11 @@ std::optional<int> create_swapchain_semaphores_fences(
     signal_fences = std::vector<VkFence>{swapchain.image_count};
     wait_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
     signal_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
-    VkFenceCreateInfo fence_info = {};
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    VkSemaphoreCreateInfo semaphore_info = {};
-    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkFenceCreateInfo fence_info = {.sType =
+                                        VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                                    .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+    VkSemaphoreCreateInfo semaphore_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     for (auto i = 0; i < swapchain.image_count; i++) {
         if (vkCreateFence(device.device, &fence_info, VK_NULL_HANDLE,
                           &signal_fences[i]) != VK_SUCCESS ||
@@ -348,88 +350,27 @@ std::optional<int> allocate_command_buffers(
     const std::vector<VkDescriptorSet> &descriptor_sets,
     std::vector<VkCommandBuffer> &command_buffers) {
     command_buffers = std::vector<VkCommandBuffer>{swapchain.image_count};
-    VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
-    command_buffer_allocate_info.sType =
-        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    command_buffer_allocate_info.commandPool = command_pool;
-    command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    command_buffer_allocate_info.commandBufferCount = swapchain.image_count;
-    if (vkAllocateCommandBuffers(device.device, &command_buffer_allocate_info,
+    VkCommandBufferAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = swapchain.image_count};
+    if (vkAllocateCommandBuffers(device.device, &allocate_info,
                                  command_buffers.data()) != VK_SUCCESS) {
         return -1;
-    }
-    int width, height;
-    SDL_Vulkan_GetDrawableSize(window, &width, &height);
-    for (auto i = 0; i < swapchain.image_count; i++) {
-        VkCommandBufferBeginInfo command_buffer_begin_info = {};
-        command_buffer_begin_info.sType =
-            VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        if (vkBeginCommandBuffer(command_buffers[i],
-                                 &command_buffer_begin_info) != VK_SUCCESS) {
-            return -1;
-        }
-        vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_COMPUTE,
-                          pipeline);
-        vkCmdBindDescriptorSets(
-            command_buffers[i], VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout,
-            0, 1, &descriptor_sets[i], VK_NULL_HANDLE, VK_NULL_HANDLE);
-        VkImageMemoryBarrier begin_image_memory_barrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = VK_NULL_HANDLE,
-            .srcAccessMask = VK_NULL_HANDLE,
-            .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = queue_index,
-            .dstQueueFamilyIndex = queue_index,
-            .image = images[i],
-            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                 .baseMipLevel = VK_NULL_HANDLE,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = VK_NULL_HANDLE,
-                                 .layerCount = 1}};
-        vkCmdPipelineBarrier(
-            command_buffers[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_NULL_HANDLE,
-            VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, 1,
-            &begin_image_memory_barrier);
-        vkCmdDispatch(command_buffers[i], width / GROUP_SIZE + 1,
-                      height / GROUP_SIZE + 1, 1);
-        VkImageMemoryBarrier end_image_memory_barrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = VK_NULL_HANDLE,
-            .srcAccessMask = VK_NULL_HANDLE,
-            .dstAccessMask = VK_NULL_HANDLE,
-            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = queue_index,
-            .dstQueueFamilyIndex = queue_index,
-            .image = images[i],
-            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                 .baseMipLevel = VK_NULL_HANDLE,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = VK_NULL_HANDLE,
-                                 .layerCount = 1}};
-        vkCmdPipelineBarrier(
-            command_buffers[i], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_NULL_HANDLE,
-            VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, 1,
-            &end_image_memory_barrier);
-        if (vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
-            return -1;
-        }
     }
     return {};
 }
 
-std::optional<int>
-queue_submit(const vkb::Device &device, const VkQueue &queue,
-             const vkb::Swapchain &swapchain,
-             const std::vector<VkFence> &signal_fences,
-             const std::vector<VkSemaphore> &wait_semaphores,
-             const std::vector<VkSemaphore> &signal_semaphores,
-             const std::vector<VkCommandBuffer> &command_buffers,
-             const uint32_t &index, std::vector<VkFence> &wait_fences) {
+std::optional<int> queue_submit(
+    const vkb::Device &device, const VkQueue &queue,
+    const vkb::Swapchain &swapchain, const std::vector<VkFence> &signal_fences,
+    const std::vector<VkSemaphore> &wait_semaphores,
+    const std::vector<VkSemaphore> &signal_semaphores,
+    const std::vector<VkCommandBuffer> &command_buffers, const uint32_t &index,
+    std::vector<VkFence> &wait_fences,
+    std::function<std::optional<int>(const uint32_t &, const VkCommandBuffer &)>
+        commands) {
     if (vkWaitForFences(device.device, 1, &signal_fences[index], VK_TRUE,
                         UINT64_MAX) != VK_SUCCESS) {
         return -1;
@@ -450,31 +391,49 @@ queue_submit(const vkb::Device &device, const VkQueue &queue,
         }
     }
     wait_fences[image_index] = signal_fences[index];
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    VkPipelineStageFlags wait_stages[] = {
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &wait_semaphores[index];
-    submitInfo.pWaitDstStageMask = wait_stages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &command_buffers[image_index];
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &signal_semaphores[index];
     if (vkResetFences(device.device, 1, &signal_fences[index]) != VK_SUCCESS) {
         return -1;
     }
-    if (vkQueueSubmit(queue, 1, &submitInfo, signal_fences[index]) !=
+    if (vkResetCommandBuffer(command_buffers[image_index],
+                             VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT) !=
         VK_SUCCESS) {
         return -1;
     }
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.waitSemaphoreCount = 1;
-    present_info.pWaitSemaphores = &signal_semaphores[index];
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = &swapchain.swapchain;
-    present_info.pImageIndices = &image_index;
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    if (vkBeginCommandBuffer(command_buffers[image_index], &begin_info) !=
+        VK_SUCCESS) {
+        return -1;
+    }
+    if (auto error = commands(image_index, command_buffers[image_index])) {
+        return -1;
+    }
+    if (vkEndCommandBuffer(command_buffers[image_index]) != VK_SUCCESS) {
+        return -1;
+    }
+    VkPipelineStageFlags wait_stages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkSubmitInfo submit_info = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                .waitSemaphoreCount = 1,
+                                .pWaitSemaphores = &wait_semaphores[index],
+                                .pWaitDstStageMask = wait_stages,
+                                .commandBufferCount = 1,
+                                .pCommandBuffers =
+                                    &command_buffers[image_index],
+                                .signalSemaphoreCount = 1,
+                                .pSignalSemaphores = &signal_semaphores[index]};
+    if (vkQueueSubmit(queue, 1, &submit_info, signal_fences[index]) !=
+        VK_SUCCESS) {
+        return -1;
+    }
+    VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &signal_semaphores[index],
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain.swapchain,
+        .pImageIndices = &image_index};
     result = vkQueuePresentKHR(queue, &present_info);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
