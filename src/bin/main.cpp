@@ -50,9 +50,10 @@ int main(int argc, char *argv[]) {
     std::vector<VkFence> signal_fences;
     std::vector<VkSemaphore> wait_semaphores, signal_semaphores;
     std::vector<VkFence> wait_fences;
-    if (auto error = create_swapchain_semaphores_fences(
+    VkRenderPass render_pass;
+    if (auto error = create_swapchain_semaphores_fences_render_pass(
             device, swapchain, images, image_views, signal_fences,
-            wait_semaphores, signal_semaphores, wait_fences)) {
+            wait_semaphores, signal_semaphores, wait_fences, render_pass)) {
         return -1;
     }
     VkDescriptorPool descriptor_pool;
@@ -76,6 +77,35 @@ int main(int argc, char *argv[]) {
     uint32_t index = 0;
     uint32_t quit = 0;
     SDL_Event event;
+    auto reset = [&]() -> std::optional<int> {
+        vkDeviceWaitIdle(device.device);
+        vkFreeCommandBuffers(device.device, command_pool,
+                             command_buffers.size(), command_buffers.data());
+        vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+        if (auto error = create_swapchain_semaphores_fences_render_pass(
+                device, swapchain, images, image_views, signal_fences,
+                wait_semaphores, signal_semaphores, wait_fences, render_pass,
+                true)) {
+            return -1;
+        }
+        if (auto error =
+                create_descriptor_pool(device, swapchain, descriptor_pool)) {
+            return -1;
+        }
+        if (auto error = allocate_descriptor_sets(
+                device, swapchain, image_views, set_layout, descriptor_pool,
+                descriptor_sets)) {
+            return -1;
+        }
+        if (auto error = allocate_command_buffers(
+                window, device, queue_index, command_pool, pipeline_layout,
+                pipeline, swapchain, images, image_views, descriptor_sets,
+                command_buffers)) {
+            return -1;
+        }
+        index = 0;
+        return {};
+    };
     while (!quit) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -92,34 +122,9 @@ int main(int argc, char *argv[]) {
                     event.window.windowID == SDL_GetWindowID(window))
                     quit = 1;
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    vkDeviceWaitIdle(device.device);
-                    vkFreeCommandBuffers(device.device, command_pool,
-                                         command_buffers.size(),
-                                         command_buffers.data());
-                    vkDestroyDescriptorPool(device.device, descriptor_pool,
-                                            VK_NULL_HANDLE);
-                    if (auto error = create_swapchain_semaphores_fences(
-                            device, swapchain, images, image_views,
-                            signal_fences, wait_semaphores, signal_semaphores,
-                            wait_fences, true)) {
+                    if (auto error = reset()) {
                         return -1;
                     }
-                    if (auto error = create_descriptor_pool(device, swapchain,
-                                                            descriptor_pool)) {
-                        return -1;
-                    }
-                    if (auto error = allocate_descriptor_sets(
-                            device, swapchain, image_views, set_layout,
-                            descriptor_pool, descriptor_sets)) {
-                        return -1;
-                    }
-                    if (auto error = allocate_command_buffers(
-                            window, device, queue_index, command_pool,
-                            pipeline_layout, pipeline, swapchain, images,
-                            image_views, descriptor_sets, command_buffers)) {
-                        return -1;
-                    }
-                    index = 0;
                 }
                 break;
 
@@ -128,9 +133,8 @@ int main(int argc, char *argv[]) {
             }
         }
         if (auto error = queue_submit(
-                device, queue, swapchain, signal_fences,
-                wait_semaphores, signal_semaphores, command_buffers, index,
-                wait_fences,
+                device, queue, swapchain, signal_fences, wait_semaphores,
+                signal_semaphores, command_buffers, index, wait_fences,
                 [&](const uint32_t &index,
                     const VkCommandBuffer &command_buffer)
                     -> std::optional<int> {
@@ -189,34 +193,9 @@ int main(int argc, char *argv[]) {
                     return {};
                 })) {
             if (error == 0) {
-                vkDeviceWaitIdle(device.device);
-                vkFreeCommandBuffers(device.device, command_pool,
-                                     command_buffers.size(),
-                                     command_buffers.data());
-                vkDestroyDescriptorPool(device.device, descriptor_pool,
-                                        VK_NULL_HANDLE);
-                if (auto error = create_swapchain_semaphores_fences(
-                        device, swapchain, images, image_views, signal_fences,
-                        wait_semaphores, signal_semaphores, wait_fences,
-                        true)) {
+                if (auto error = reset()) {
                     return -1;
                 }
-                if (auto error = create_descriptor_pool(device, swapchain,
-                                                        descriptor_pool)) {
-                    return -1;
-                }
-                if (auto error = allocate_descriptor_sets(
-                        device, swapchain, image_views, set_layout,
-                        descriptor_pool, descriptor_sets)) {
-                    return -1;
-                }
-                if (auto error = allocate_command_buffers(
-                        window, device, queue_index, command_pool,
-                        pipeline_layout, pipeline, swapchain, images,
-                        image_views, descriptor_sets, command_buffers)) {
-                    return -1;
-                }
-                index = 0;
             } else {
                 return -1;
             }
@@ -228,6 +207,7 @@ int main(int argc, char *argv[]) {
     vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
                          command_buffers.data());
     vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+    vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
     for (auto &semaphore : signal_semaphores) {
         vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
     }

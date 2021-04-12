@@ -218,13 +218,14 @@ std::optional<int> create_pipeline(const vkb::Device &device,
     return {};
 }
 
-std::optional<int> create_swapchain_semaphores_fences(
+std::optional<int> create_swapchain_semaphores_fences_render_pass(
     const vkb::Device &device, vkb::Swapchain &swapchain,
     std::vector<VkImage> &images, std::vector<VkImageView> &image_views,
     std::vector<VkFence> &signal_fences,
     std::vector<VkSemaphore> &wait_semaphores,
     std::vector<VkSemaphore> &signal_semaphores,
-    std::vector<VkFence> &wait_fences, bool destroy = false) {
+    std::vector<VkFence> &wait_fences, VkRenderPass &render_pass,
+    bool destroy = false) {
     auto builder =
         vkb::SwapchainBuilder{device}
             .add_fallback_format(
@@ -248,6 +249,7 @@ std::optional<int> create_swapchain_semaphores_fences(
     images = swapchain.get_images().value();
     image_views = swapchain.get_image_views().value();
     if (destroy) {
+        vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
         for (auto &fence : signal_fences) {
             vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
         }
@@ -276,6 +278,41 @@ std::optional<int> create_swapchain_semaphores_fences(
                               &signal_semaphores[i]) != VK_SUCCESS) {
             return -1;
         }
+    }
+    VkAttachmentDescription attachment = {
+        .format = swapchain.image_format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
+    VkAttachmentReference color_attachment = {
+        .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription subpass = {.pipelineBindPoint =
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    .colorAttachmentCount = 1,
+                                    .pColorAttachments = &color_attachment};
+    VkSubpassDependency dependency = {
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = 0,
+        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
+    VkRenderPassCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+        .dependencyCount = 1,
+        .pDependencies = &dependency};
+    if (vkCreateRenderPass(device.device, &create_info, VK_NULL_HANDLE,
+                           &render_pass) != VK_SUCCESS) {
+        return -1;
     }
     return {};
 }
