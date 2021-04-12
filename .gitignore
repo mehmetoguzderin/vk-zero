@@ -402,6 +402,7 @@ _deps
 .idea
 .vscode
 .vs
+imgui.ini
 CMakeSettings.json
 *.iml
 *.py[cod]

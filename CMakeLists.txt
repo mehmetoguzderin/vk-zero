@@ -55,6 +55,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/ocornut/imgui
   GIT_TAG        master
 )
+add_definitions(-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 FetchContent_MakeAvailable(imgui)
 
 FetchContent_Declare(

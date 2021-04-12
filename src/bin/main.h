@@ -69,7 +69,7 @@ std::optional<int> create_window_instance_surface(const char *&name,
 
 std::optional<int> create_device(const vkb::Instance &instance,
                                  const VkSurfaceKHR &surface,
-                                 vkb::PhysicalDevice physical_device,
+                                 vkb::PhysicalDevice &physical_device,
                                  vkb::Device &device) {
     if (auto result = vkb::PhysicalDeviceSelector{instance}
                           .set_minimum_version(1, 1)
@@ -426,6 +426,53 @@ std::optional<int> allocate_command_buffers(
                                  command_buffers.data()) != VK_SUCCESS) {
         return -1;
     }
+    return {};
+}
+
+std::optional<int> imgui_initialize(
+    SDL_Window *&window, vkb::Instance &instance,
+    const vkb::PhysicalDevice &physical_device, const vkb::Device &device,
+    const VkQueue &queue, const uint32_t &queue_index,
+    const VkDescriptorPool &descriptor_pool, const vkb::Swapchain &swapchain,
+    const VkRenderPass &render_pass, const VkCommandBuffer &command_buffer,
+    ImGuiIO &imgui_io) {
+    ImGui::CreateContext();
+    imgui_io = ImGui::GetIO();
+    ImGui::StyleColorsDark();
+    ImGui_ImplSDL2_InitForVulkan(window);
+    ImGui_ImplVulkan_LoadFunctions(
+        [](const char *function_name, void *instance) {
+            return vkGetInstanceProcAddr(*static_cast<VkInstance *>(instance),
+                                         function_name);
+        },
+        static_cast<void *>(&instance.instance));
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = instance.instance;
+    init_info.PhysicalDevice = physical_device.physical_device;
+    init_info.Device = device.device;
+    init_info.QueueFamily = queue_index;
+    init_info.Queue = queue;
+    init_info.DescriptorPool = descriptor_pool;
+    init_info.MinImageCount = swapchain.image_count;
+    init_info.ImageCount = swapchain.image_count;
+    if (!ImGui_ImplVulkan_Init(&init_info, render_pass)) {
+        return -1;
+    }
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command_buffer, &begin_info);
+    ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+    VkSubmitInfo end_info = {};
+    end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    end_info.commandBufferCount = 1;
+    end_info.pCommandBuffers = &command_buffer;
+    vkEndCommandBuffer(command_buffer);
+    vkQueueSubmit(queue, 1, &end_info, VK_NULL_HANDLE);
+    vkDeviceWaitIdle(device.device);
+    vkResetCommandBuffer(command_buffer,
+                         VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
     return {};
 }
 

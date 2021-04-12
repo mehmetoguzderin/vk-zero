@@ -76,9 +76,17 @@ int main(int argc, char *argv[]) {
             command_buffers)) {
         return -1;
     }
+    ImGuiIO imgui_io;
+    if (auto error =
+            imgui_initialize(window, instance, physical_device, device, queue,
+                             queue_index, descriptor_pool, swapchain,
+                             render_pass, command_buffers[0], imgui_io)) {
+        return -1;
+    }
     uint32_t index = 0;
     uint32_t quit = 0;
     SDL_Event event;
+    bool show_demo_window = true;
     auto reset = [&]() -> std::optional<int> {
         vkDeviceWaitIdle(device.device);
         vkFreeCommandBuffers(device.device, command_pool,
@@ -103,11 +111,13 @@ int main(int argc, char *argv[]) {
                 command_buffers)) {
             return -1;
         }
+        ImGui_ImplVulkan_SetMinImageCount(swapchain.image_count);
         index = 0;
         return {};
     };
     while (!quit) {
         while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type) {
             case SDL_KEYUP:
                 if (event.key.keysym.sym == SDLK_ESCAPE)
@@ -132,6 +142,13 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL2_NewFrame(window);
+        ImGui::NewFrame();
+        if (show_demo_window)
+            ImGui::ShowDemoWindow(&show_demo_window);
+        ImGui::Render();
+        ImDrawData *draw_data = ImGui::GetDrawData();
         if (auto error = queue_submit(
                 device, queue, swapchain, signal_fences, wait_semaphores,
                 signal_semaphores, command_buffers, index, wait_fences,
@@ -212,6 +229,8 @@ int main(int argc, char *argv[]) {
                         .pClearValues = &clear_values};
                     vkCmdBeginRenderPass(command_buffer, &begin_info,
                                          VK_SUBPASS_CONTENTS_INLINE);
+                    ImGui_ImplVulkan_RenderDrawData(draw_data,
+                                                    command_buffer);
                     vkCmdEndRenderPass(command_buffer);
                     return {};
                 })) {
@@ -227,6 +246,9 @@ int main(int argc, char *argv[]) {
         }
     }
     vkDeviceWaitIdle(device.device);
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
     vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
                          command_buffers.data());
     vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
