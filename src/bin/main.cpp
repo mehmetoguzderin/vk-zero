@@ -83,8 +83,8 @@ int main(int argc, char *argv[]) {
         vkDeviceWaitIdle(device.device);
         vkFreeCommandBuffers(device.device, command_pool,
                              command_buffers.size(), command_buffers.data());
-        vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
-                             descriptor_sets.data());
+        vkFreeDescriptorSets(device.device, descriptor_pool,
+                             descriptor_sets.size(), descriptor_sets.data());
         if (auto error =
                 create_swapchain_semaphores_fences_render_pass_framebuffers(
                     device, swapchain, images, image_views, signal_fences,
@@ -206,8 +206,8 @@ int main(int argc, char *argv[]) {
                         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                         .renderPass = render_pass,
                         .framebuffer = framebuffers[index],
-                        .renderArea.offset = {0, 0},
-                        .renderArea.extent = swapchain.extent,
+                        .renderArea = {.offset = {0, 0},
+                                       .extent = swapchain.extent},
                         .clearValueCount = 1,
                         .pClearValues = &clear_values};
                     vkCmdBeginRenderPass(command_buffer, &begin_info,
