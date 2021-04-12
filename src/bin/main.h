@@ -121,6 +121,34 @@ std::optional<int> create_command_pool(const vkb::Device &device,
     return {};
 }
 
+std::optional<int> create_descriptor_pool(const vkb::Device &device,
+                                          VkDescriptorPool &descriptor_pool) {
+    std::vector<VkDescriptorPoolSize> pool_sizes{
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 1024},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1024},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1024},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1024}};
+    VkDescriptorPoolCreateInfo create_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1024,
+        .poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data()};
+    if (vkCreateDescriptorPool(device.device, &create_info, VK_NULL_HANDLE,
+                               &descriptor_pool) != VK_SUCCESS) {
+        return -1;
+    }
+    return {};
+}
+
 std::optional<int>
 create_set_pipeline_layout(const vkb::Device &device,
                            VkDescriptorSetLayout &set_layout,
@@ -331,25 +359,6 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
                                 &framebuffers[i]) != VK_SUCCESS) {
             return -1;
         }
-    }
-    return {};
-}
-
-std::optional<int> create_descriptor_pool(const vkb::Device &device,
-                                          const vkb::Swapchain &swapchain,
-                                          VkDescriptorPool &descriptor_pool) {
-    VkDescriptorPoolSize pool_size{.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                   .descriptorCount = swapchain.image_count};
-    VkDescriptorPoolCreateInfo create_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_NULL_HANDLE,
-        .maxSets = swapchain.image_count,
-        .poolSizeCount = 1,
-        .pPoolSizes = &pool_size};
-    if (vkCreateDescriptorPool(device.device, &create_info, VK_NULL_HANDLE,
-                               &descriptor_pool) != VK_SUCCESS) {
-        return -1;
     }
     return {};
 }

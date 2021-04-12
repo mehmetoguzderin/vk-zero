@@ -27,6 +27,10 @@ int main(int argc, char *argv[]) {
     if (auto error = create_command_pool(device, queue_index, command_pool)) {
         return -1;
     }
+    VkDescriptorPool descriptor_pool;
+    if (auto error = create_descriptor_pool(device, descriptor_pool)) {
+        return -1;
+    }
     VkDescriptorSetLayout set_layout;
     VkPipelineLayout pipeline_layout;
     if (auto error =
@@ -59,11 +63,6 @@ int main(int argc, char *argv[]) {
                 framebuffers)) {
         return -1;
     }
-    VkDescriptorPool descriptor_pool;
-    if (auto error =
-            create_descriptor_pool(device, swapchain, descriptor_pool)) {
-        return -1;
-    }
     std::vector<VkDescriptorSet> descriptor_sets;
     if (auto error =
             allocate_descriptor_sets(device, swapchain, image_views, set_layout,
@@ -84,16 +83,13 @@ int main(int argc, char *argv[]) {
         vkDeviceWaitIdle(device.device);
         vkFreeCommandBuffers(device.device, command_pool,
                              command_buffers.size(), command_buffers.data());
-        vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+        vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
+                             descriptor_sets.data());
         if (auto error =
                 create_swapchain_semaphores_fences_render_pass_framebuffers(
                     device, swapchain, images, image_views, signal_fences,
                     wait_semaphores, signal_semaphores, wait_fences,
                     render_pass, framebuffers, true)) {
-            return -1;
-        }
-        if (auto error =
-                create_descriptor_pool(device, swapchain, descriptor_pool)) {
             return -1;
         }
         if (auto error = allocate_descriptor_sets(
@@ -233,7 +229,8 @@ int main(int argc, char *argv[]) {
     vkDeviceWaitIdle(device.device);
     vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
                          command_buffers.data());
-    vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
+    vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
+                         descriptor_sets.data());
     for (auto &framebuffer : framebuffers) {
         vkDestroyFramebuffer(device.device, framebuffer, VK_NULL_HANDLE);
     }
@@ -253,6 +250,7 @@ int main(int argc, char *argv[]) {
     vkDestroyShaderModule(device.device, shader_module, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(device.device, pipeline_layout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(device.device, set_layout, VK_NULL_HANDLE);
+    vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
     vkDestroyCommandPool(device.device, command_pool, VK_NULL_HANDLE);
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, VK_NULL_HANDLE);
