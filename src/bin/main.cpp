@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
             create_set_pipeline_layout(device, set_layout, pipeline_layout)) {
         return -1;
     }
-    auto module_name = "src/lib.spv";
+    auto module_name = "main.hpp";
     VkShaderModule shader_module;
     if (auto error = create_shader_module(device, module_name, shader_module)) {
         return -1;

@@ -87,66 +87,73 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif()
 FetchContent_MakeAvailable(volk)
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  find_program(CLSPV_WIN "clspv")
-  if(CLSPV_WIN)
-    set(
-      CLSPV_COMMAND
-      clspv -O=3
-            --spv-version=1.3
-            --cl-std=CLC++
-            --inline-entry-points
-            --uniform-workgroup-size
-            --pod-ubo
-            -o "lib.spv"
-            "lib.h"
-    )
+file(GLOB kernels "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/*.hpp")
+foreach(kernel ${kernels})
+  get_filename_component(kernel ${kernel} NAME)
+  if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    find_program(CLSPV_WIN "clspv")
+    if(CLSPV_WIN)
+      set(
+        CLSPV_COMMAND
+        clspv -O=3
+              --spv-version=1.3
+              --cl-std=CLC++
+              --inline-entry-points
+              --uniform-workgroup-size
+              --pod-ubo
+              -o "${CMAKE_BINARY_DIR}/${kernel}"
+              "bin/${kernel}"
+      )
+    else()
+      set(
+        CLSPV_COMMAND
+        PowerShell
+        wsl
+        clspv -O=3
+              --spv-version=1.3
+              --cl-std=CLC++
+              --inline-entry-points
+              --uniform-workgroup-size
+              --pod-ubo
+              -o "${CMAKE_BINARY_DIR}/${kernel}"
+              "bin/${kernel}"
+      )
+    endif()
   else()
     set(
       CLSPV_COMMAND
-      PowerShell
-      wsl
       clspv -O=3
             --spv-version=1.3
             --cl-std=CLC++
             --inline-entry-points
             --uniform-workgroup-size
             --pod-ubo
-            -o "lib.spv"
-            "lib.h"
+            -o "${CMAKE_BINARY_DIR}/${kernel}"
+            "bin/${kernel}"
     )
   endif()
-else()
-  set(
-    CLSPV_COMMAND
-    clspv -O=3
-          --spv-version=1.3
-          --cl-std=CLC++
-          --inline-entry-points
-          --uniform-workgroup-size
-          --pod-ubo
-          -o "lib.spv"
-          "lib.h"
+  add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/${kernel}"
+    COMMAND ${CMAKE_COMMAND} -E copy
+                             "lib.h"
+                             "bin/lib.h"
+    COMMAND ${CLSPV_COMMAND}
+    COMMAND spirv-opt --strip-reflect
+                      -O
+                      -o "${CMAKE_BINARY_DIR}/${kernel}"
+                      "${CMAKE_BINARY_DIR}/${kernel}"
+    COMMAND ${CMAKE_COMMAND} -E remove
+                             "bin/lib.h"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}"
+    VERBATIM
+    COMMAND_EXPAND_LISTS
   )
-endif()
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
-  COMMAND ${CLSPV_COMMAND}
-  COMMAND spirv-opt --strip-reflect
-                    -O
-                    -o "lib.spv"
-                    "lib.spv"
-  COMMAND ${CMAKE_COMMAND} -E copy
-                           "lib.spv"
-                           "${CMAKE_BINARY_DIR}/src/lib.spv"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.h"
-  VERBATIM
-  COMMAND_EXPAND_LISTS
-)
+  list(APPEND spirv_kernels "${CMAKE_BINARY_DIR}/${kernel}")
+endforeach()
 add_custom_target(
   spirv_target ALL
-  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.spv"
+  DEPENDS ${spirv_kernels}
 )
 
 include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
@@ -176,4 +183,4 @@ set(
 )
 add_definitions(-DVK_ZERO_CPU)
 
-add_executable(main ${VK_ZERO_SOURCES} "src/bin/main.cpp")
+add_executable(main ${VK_ZERO_SOURCES} "src/bin/main.hpp" "src/bin/main.cpp")

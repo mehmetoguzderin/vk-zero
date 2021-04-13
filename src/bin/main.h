@@ -1,4 +1,9 @@
+#ifndef MAIN_H
+#define MAIN_H
+
 #include "lib.h"
+
+#ifdef VK_ZERO_CPU
 
 #include <chrono>
 #include <cstdio>
@@ -550,3 +555,7 @@ std::optional<int> queue_submit(
     }
     return {};
 }
+
+#endif
+
+#endif
