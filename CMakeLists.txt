@@ -142,12 +142,12 @@ foreach(kernel ${kernels})
                       -O
                       -o "${kernel}"
                       "${kernel}"
-    COMMAND ${CMAKE_COMMAND} -E remove
+    COMMAND ${CMAKE_COMMAND} -E rm -f
                              "bin/lib.h"
     COMMAND ${CMAKE_COMMAND} -E copy
                              "${kernel}"
                              "${CMAKE_BINARY_DIR}/${kernel}"
-    COMMAND ${CMAKE_COMMAND} -E remove
+    COMMAND ${CMAKE_COMMAND} -E rm -f
                              "${kernel}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}"
