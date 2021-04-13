@@ -101,7 +101,7 @@ foreach(kernel ${kernels})
               --inline-entry-points
               --uniform-workgroup-size
               --pod-ubo
-              -o "${CMAKE_BINARY_DIR}/${kernel}"
+              -o "${kernel}"
               "bin/${kernel}"
       )
     else()
@@ -115,7 +115,7 @@ foreach(kernel ${kernels})
               --inline-entry-points
               --uniform-workgroup-size
               --pod-ubo
-              -o "${CMAKE_BINARY_DIR}/${kernel}"
+              -o "${kernel}"
               "bin/${kernel}"
       )
     endif()
@@ -128,7 +128,7 @@ foreach(kernel ${kernels})
             --inline-entry-points
             --uniform-workgroup-size
             --pod-ubo
-            -o "${CMAKE_BINARY_DIR}/${kernel}"
+            -o "${kernel}"
             "bin/${kernel}"
     )
   endif()
@@ -140,10 +140,15 @@ foreach(kernel ${kernels})
     COMMAND ${CLSPV_COMMAND}
     COMMAND spirv-opt --strip-reflect
                       -O
-                      -o "${CMAKE_BINARY_DIR}/${kernel}"
-                      "${CMAKE_BINARY_DIR}/${kernel}"
+                      -o "${kernel}"
+                      "${kernel}"
     COMMAND ${CMAKE_COMMAND} -E remove
                              "bin/lib.h"
+    COMMAND ${CMAKE_COMMAND} -E copy
+                             "${kernel}"
+                             "${CMAKE_BINARY_DIR}/${kernel}"
+    COMMAND ${CMAKE_COMMAND} -E remove
+                             "${kernel}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}"
     VERBATIM
