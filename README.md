@@ -1,5 +1,12 @@
 # `vk-zero`
 
+## Usage
+
+### Rules
+
+1. Do not create a file named `lib.h` inside `src/bin` directory.
+2. Do not create any file with `hpp` extension inside `src` directory except inside `src/bin` subdirectory, you can create files with `hpp` extension inside `src/bin` subdirectory.
+
 ## Tooling
 
 ### Prerequisites
