@@ -189,8 +189,9 @@ int main(int argc, char *argv[]) {
                     VkImageMemoryBarrier end_image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                         .pNext = VK_NULL_HANDLE,
-                        .srcAccessMask = VK_NULL_HANDLE,
-                        .dstAccessMask = VK_NULL_HANDLE,
+                        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                        .dstAccessMask =
+                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                         .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         .srcQueueFamilyIndex = queue_index,
@@ -229,8 +230,7 @@ int main(int argc, char *argv[]) {
                         .pClearValues = &clear_values};
                     vkCmdBeginRenderPass(command_buffer, &begin_info,
                                          VK_SUBPASS_CONTENTS_INLINE);
-                    ImGui_ImplVulkan_RenderDrawData(draw_data,
-                                                    command_buffer);
+                    ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
                     vkCmdEndRenderPass(command_buffer);
                     return {};
                 })) {

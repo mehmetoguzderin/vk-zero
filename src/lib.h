@@ -17,7 +17,6 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
-#define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
