@@ -251,8 +251,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     std::vector<VkImage> &images, std::vector<VkImageView> &image_views,
     std::vector<VkFence> &signal_fences,
     std::vector<VkSemaphore> &wait_semaphores,
-    std::vector<VkSemaphore> &signal_semaphores,
-    std::vector<VkFence> &wait_fences, VkRenderPass &render_pass,
+    std::vector<VkSemaphore> &signal_semaphores, VkRenderPass &render_pass,
     std::vector<VkFramebuffer> &framebuffers, bool destroy = false) {
     auto builder =
         vkb::SwapchainBuilder{device}
@@ -294,7 +293,6 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
             vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
         }
     }
-    wait_fences = std::vector<VkFence>{swapchain.image_count, VK_NULL_HANDLE};
     signal_fences = std::vector<VkFence>{swapchain.image_count};
     wait_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
     signal_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
@@ -481,31 +479,26 @@ std::optional<int> queue_submit(
     const vkb::Swapchain &swapchain, const std::vector<VkFence> &signal_fences,
     const std::vector<VkSemaphore> &wait_semaphores,
     const std::vector<VkSemaphore> &signal_semaphores,
-    const std::vector<VkCommandBuffer> &command_buffers, const uint32_t &index,
-    std::vector<VkFence> &wait_fences,
+    const std::vector<VkCommandBuffer> &command_buffers, uint32_t &index,
     std::function<std::optional<int>(const uint32_t &, const VkCommandBuffer &)>
         commands) {
-    if (vkWaitForFences(device.device, 1, &signal_fences[index], VK_TRUE,
-                        UINT64_MAX) != VK_SUCCESS) {
-        return -1;
-    }
-    uint32_t image_index = 0;
+    uint32_t image_index;
     VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain,
                                             UINT64_MAX, wait_semaphores[index],
                                             VK_NULL_HANDLE, &image_index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
+    } else if (result == VK_NOT_READY || result == VK_TIMEOUT) {
+        return 1;
     } else if (result != VK_SUCCESS) {
         return -1;
     }
-    if (wait_fences[image_index] != VK_NULL_HANDLE) {
-        if (vkWaitForFences(device.device, 1, &wait_fences[image_index],
-                            VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-            return -1;
-        }
+    if (vkWaitForFences(device.device, 1, &signal_fences[image_index], VK_TRUE,
+                        UINT64_MAX) != VK_SUCCESS) {
+        return -1;
     }
-    wait_fences[image_index] = signal_fences[index];
-    if (vkResetFences(device.device, 1, &signal_fences[index]) != VK_SUCCESS) {
+    if (vkResetFences(device.device, 1, &signal_fences[image_index]) !=
+        VK_SUCCESS) {
         return -1;
     }
     if (vkResetCommandBuffer(command_buffers[image_index],
@@ -528,27 +521,28 @@ std::optional<int> queue_submit(
     }
     VkPipelineStageFlags wait_stages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSubmitInfo submit_info = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                .waitSemaphoreCount = 1,
-                                .pWaitSemaphores = &wait_semaphores[index],
-                                .pWaitDstStageMask = wait_stages,
-                                .commandBufferCount = 1,
-                                .pCommandBuffers =
-                                    &command_buffers[image_index],
-                                .signalSemaphoreCount = 1,
-                                .pSignalSemaphores = &signal_semaphores[index]};
-    if (vkQueueSubmit(queue, 1, &submit_info, signal_fences[index]) !=
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait_semaphores[index],
+        .pWaitDstStageMask = wait_stages,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buffers[image_index],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &signal_semaphores[image_index]};
+    if (vkQueueSubmit(queue, 1, &submit_info, signal_fences[image_index]) !=
         VK_SUCCESS) {
         return -1;
     }
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &signal_semaphores[index],
+        .pWaitSemaphores = &signal_semaphores[image_index],
         .swapchainCount = 1,
         .pSwapchains = &swapchain.swapchain,
         .pImageIndices = &image_index};
     result = vkQueuePresentKHR(queue, &present_info);
+    index = image_index;
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
     } else if (result != VK_SUCCESS) {

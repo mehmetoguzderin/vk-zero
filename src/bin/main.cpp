@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     if (auto error =
             create_swapchain_semaphores_fences_render_pass_framebuffers(
                 device, swapchain, images, image_views, signal_fences,
-                wait_semaphores, signal_semaphores, wait_fences, render_pass,
+                wait_semaphores, signal_semaphores, render_pass,
                 framebuffers)) {
         return -1;
     }
@@ -96,8 +96,8 @@ int main(int argc, char *argv[]) {
         if (auto error =
                 create_swapchain_semaphores_fences_render_pass_framebuffers(
                     device, swapchain, images, image_views, signal_fences,
-                    wait_semaphores, signal_semaphores, wait_fences,
-                    render_pass, framebuffers, true)) {
+                    wait_semaphores, signal_semaphores, render_pass,
+                    framebuffers, true)) {
             return -1;
         }
         if (auto error = allocate_descriptor_sets(
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
         ImDrawData *draw_data = ImGui::GetDrawData();
         if (auto error = queue_submit(
                 device, queue, swapchain, signal_fences, wait_semaphores,
-                signal_semaphores, command_buffers, index, wait_fences,
+                signal_semaphores, command_buffers, index,
                 [&](const uint32_t &index,
                     const VkCommandBuffer &command_buffer)
                     -> std::optional<int> {
@@ -238,11 +238,11 @@ int main(int argc, char *argv[]) {
                 if (auto error = reset()) {
                     return -1;
                 }
+            }
+            if (error == 1) {
             } else {
                 return -1;
             }
-        } else {
-            index = (index + 1) % swapchain.image_count;
         }
     }
     vkDeviceWaitIdle(device.device);
