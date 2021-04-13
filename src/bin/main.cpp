@@ -14,8 +14,9 @@ int main(int argc, char *argv[]) {
     }
     vkb::PhysicalDevice physical_device;
     vkb::Device device;
-    if (auto error =
-            create_device(instance, surface, physical_device, device)) {
+    VmaAllocator allocator;
+    if (auto error = create_device_allocator(instance, surface, physical_device,
+                                             device, allocator)) {
         return -1;
     }
     VkQueue queue;
@@ -274,6 +275,7 @@ int main(int argc, char *argv[]) {
     vkDestroyDescriptorSetLayout(device.device, set_layout, VK_NULL_HANDLE);
     vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
     vkDestroyCommandPool(device.device, command_pool, VK_NULL_HANDLE);
+    vmaDestroyAllocator(allocator);
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, VK_NULL_HANDLE);
     vkb::destroy_instance(instance);

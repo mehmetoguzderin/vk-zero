@@ -72,10 +72,11 @@ std::optional<int> create_window_instance_surface(const char *&name,
     return {};
 }
 
-std::optional<int> create_device(const vkb::Instance &instance,
-                                 const VkSurfaceKHR &surface,
-                                 vkb::PhysicalDevice &physical_device,
-                                 vkb::Device &device) {
+std::optional<int> create_device_allocator(const vkb::Instance &instance,
+                                           const VkSurfaceKHR &surface,
+                                           vkb::PhysicalDevice &physical_device,
+                                           vkb::Device &device,
+                                           VmaAllocator &allocator) {
     if (auto result = vkb::PhysicalDeviceSelector{instance}
                           .set_minimum_version(1, 1)
                           .set_required_features(
@@ -97,6 +98,14 @@ std::optional<int> create_device(const vkb::Instance &instance,
         device = result.value();
     }
     volkLoadDevice(device.device);
+    VmaAllocatorCreateInfo create_info = {
+        .physicalDevice = physical_device.physical_device,
+        .device = device.device,
+        .instance = instance.instance,
+        .vulkanApiVersion = VK_API_VERSION_1_1};
+    if (vmaCreateAllocator(&create_info, &allocator) != VK_SUCCESS) {
+        return -1;
+    }
     return {};
 }
 
