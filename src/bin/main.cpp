@@ -162,12 +162,12 @@ int main(int argc, char *argv[]) {
                                       VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
                     vkCmdBindDescriptorSets(
                         command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        pipeline_layout, 0, 1, &descriptor_sets[index],
-                        VK_NULL_HANDLE, VK_NULL_HANDLE);
+                        pipeline_layout, 0, 1, &descriptor_sets[index], 0,
+                        nullptr);
                     VkImageMemoryBarrier begin_image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                        .pNext = VK_NULL_HANDLE,
-                        .srcAccessMask = VK_NULL_HANDLE,
+                        .pNext = nullptr,
+                        .srcAccessMask = 0,
                         .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
                         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -176,20 +176,20 @@ int main(int argc, char *argv[]) {
                         .image = images[index],
                         .subresourceRange = {.aspectMask =
                                                  VK_IMAGE_ASPECT_COLOR_BIT,
-                                             .baseMipLevel = VK_NULL_HANDLE,
+                                             .baseMipLevel = 0,
                                              .levelCount = 1,
-                                             .baseArrayLayer = VK_NULL_HANDLE,
+                                             .baseArrayLayer = 0,
                                              .layerCount = 1}};
                     vkCmdPipelineBarrier(
                         command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_NULL_HANDLE,
-                        VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,
-                        VK_NULL_HANDLE, 1, &begin_image_memory_barrier);
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
+                        nullptr, 0, nullptr, 1,
+                        &begin_image_memory_barrier);
                     vkCmdDispatch(command_buffer, width / GROUP_SIZE + 1,
                                   height / GROUP_SIZE + 1, 1);
                     VkImageMemoryBarrier end_image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                        .pNext = VK_NULL_HANDLE,
+                        .pNext = nullptr,
                         .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
                         .dstAccessMask =
                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -200,15 +200,15 @@ int main(int argc, char *argv[]) {
                         .image = images[index],
                         .subresourceRange = {.aspectMask =
                                                  VK_IMAGE_ASPECT_COLOR_BIT,
-                                             .baseMipLevel = VK_NULL_HANDLE,
+                                             .baseMipLevel = 0,
                                              .levelCount = 1,
-                                             .baseArrayLayer = VK_NULL_HANDLE,
+                                             .baseArrayLayer = 0,
                                              .layerCount = 1}};
-                    vkCmdPipelineBarrier(
-                        command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_NULL_HANDLE,
-                        VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE,
-                        VK_NULL_HANDLE, 1, &end_image_memory_barrier);
+                    vkCmdPipelineBarrier(command_buffer,
+                                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0,
+                                         0, nullptr, 0, nullptr,
+                                         1, &end_image_memory_barrier);
                     VkViewport viewport = {
                         .x = 0.0f,
                         .y = 0.0f,
@@ -255,29 +255,29 @@ int main(int argc, char *argv[]) {
     vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
                          descriptor_sets.data());
     for (auto &framebuffer : framebuffers) {
-        vkDestroyFramebuffer(device.device, framebuffer, VK_NULL_HANDLE);
+        vkDestroyFramebuffer(device.device, framebuffer, nullptr);
     }
-    vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
+    vkDestroyRenderPass(device.device, render_pass, nullptr);
     for (auto &semaphore : signal_semaphores) {
-        vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+        vkDestroySemaphore(device.device, semaphore, nullptr);
     }
     for (auto &semaphore : wait_semaphores) {
-        vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+        vkDestroySemaphore(device.device, semaphore, nullptr);
     }
     for (auto &fence : signal_fences) {
-        vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
+        vkDestroyFence(device.device, fence, nullptr);
     }
     swapchain.destroy_image_views(image_views);
     vkb::destroy_swapchain(swapchain);
-    vkDestroyPipeline(device.device, pipeline, VK_NULL_HANDLE);
-    vkDestroyShaderModule(device.device, shader_module, VK_NULL_HANDLE);
-    vkDestroyPipelineLayout(device.device, pipeline_layout, VK_NULL_HANDLE);
-    vkDestroyDescriptorSetLayout(device.device, set_layout, VK_NULL_HANDLE);
-    vkDestroyDescriptorPool(device.device, descriptor_pool, VK_NULL_HANDLE);
-    vkDestroyCommandPool(device.device, command_pool, VK_NULL_HANDLE);
+    vkDestroyPipeline(device.device, pipeline, nullptr);
+    vkDestroyShaderModule(device.device, shader_module, nullptr);
+    vkDestroyPipelineLayout(device.device, pipeline_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device.device, set_layout, nullptr);
+    vkDestroyDescriptorPool(device.device, descriptor_pool, nullptr);
+    vkDestroyCommandPool(device.device, command_pool, nullptr);
     vmaDestroyAllocator(allocator);
     vkb::destroy_device(device);
-    vkDestroySurfaceKHR(instance.instance, surface, VK_NULL_HANDLE);
+    vkDestroySurfaceKHR(instance.instance, surface, nullptr);
     vkb::destroy_instance(instance);
     SDL_DestroyWindow(window);
     SDL_Quit();

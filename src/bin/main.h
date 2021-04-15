@@ -128,7 +128,7 @@ std::optional<int> create_command_pool(const vkb::Device &device,
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = queue_index};
-    if (vkCreateCommandPool(device.device, &create_info, VK_NULL_HANDLE,
+    if (vkCreateCommandPool(device.device, &create_info, nullptr,
                             &command_pool) != VK_SUCCESS) {
         return -1;
     }
@@ -151,12 +151,12 @@ std::optional<int> create_descriptor_pool(const vkb::Device &device,
         {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1024}};
     VkDescriptorPoolCreateInfo create_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
+        .pNext = nullptr,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = 1024,
         .poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
         .pPoolSizes = pool_sizes.data()};
-    if (vkCreateDescriptorPool(device.device, &create_info, VK_NULL_HANDLE,
+    if (vkCreateDescriptorPool(device.device, &create_info, nullptr,
                                &descriptor_pool) != VK_SUCCESS) {
         return -1;
     }
@@ -172,28 +172,28 @@ create_set_pipeline_layout(const vkb::Device &device,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-        .pImmutableSamplers = VK_NULL_HANDLE};
+        .pImmutableSamplers = nullptr};
     VkDescriptorSetLayoutCreateInfo set_create_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_NULL_HANDLE,
+        .pNext = nullptr,
+        .flags = 0,
         .bindingCount = 1,
         .pBindings = &binding};
     if (vkCreateDescriptorSetLayout(device.device, &set_create_info,
-                                    VK_NULL_HANDLE,
+                                    nullptr,
                                     &set_layout) != VK_SUCCESS) {
         return -1;
     }
     VkPipelineLayoutCreateInfo pipeline_create_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_NULL_HANDLE,
+        .pNext = nullptr,
+        .flags = 0,
         .setLayoutCount = 1,
         .pSetLayouts = &set_layout,
-        .pushConstantRangeCount = VK_NULL_HANDLE,
-        .pPushConstantRanges = VK_NULL_HANDLE};
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = nullptr};
     if (vkCreatePipelineLayout(device.device, &pipeline_create_info,
-                               VK_NULL_HANDLE,
+                               nullptr,
                                &pipeline_layout) != VK_SUCCESS) {
         return -1;
     }
@@ -215,7 +215,7 @@ std::optional<int> create_shader_module(const vkb::Device &device,
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = code.size(),
         .pCode = reinterpret_cast<const uint32_t *>(code.data())};
-    if (vkCreateShaderModule(device.device, &create_info, VK_NULL_HANDLE,
+    if (vkCreateShaderModule(device.device, &create_info, nullptr,
                              &shader_module) != VK_SUCCESS) {
         return -1;
     }
@@ -242,7 +242,7 @@ std::optional<int> create_pipeline(const vkb::Device &device,
                                              .pData = data};
     VkComputePipelineCreateInfo create_info{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
+        .pNext = nullptr,
         .flags = 0,
         .stage = {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                   .stage = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -250,11 +250,10 @@ std::optional<int> create_pipeline(const vkb::Device &device,
                   .pName = name,
                   .pSpecializationInfo = &specialization_info},
         .layout = pipeline_layout,
-        .basePipelineHandle = VK_NULL_HANDLE,
-        .basePipelineIndex = VK_NULL_HANDLE,
-    };
-    if (vkCreateComputePipelines(device.device, VK_NULL_HANDLE, 1, &create_info,
-                                 VK_NULL_HANDLE, &pipeline) != VK_SUCCESS) {
+        .basePipelineHandle = nullptr,
+        .basePipelineIndex = 0};
+    if (vkCreateComputePipelines(device.device, nullptr, 1, &create_info,
+                                 nullptr, &pipeline) != VK_SUCCESS) {
         return -1;
     }
     return {};
@@ -286,9 +285,9 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
         if (destroy) {
             for (auto &framebuffer : framebuffers) {
                 vkDestroyFramebuffer(device.device, framebuffer,
-                                     VK_NULL_HANDLE);
+                                     nullptr);
             }
-            vkDestroyRenderPass(device.device, render_pass, VK_NULL_HANDLE);
+            vkDestroyRenderPass(device.device, render_pass, nullptr);
         }
         swapchain.destroy_image_views(image_views);
         vkb::destroy_swapchain(swapchain);
@@ -298,13 +297,13 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     image_views = swapchain.get_image_views().value();
     if (destroy) {
         for (auto &fence : signal_fences) {
-            vkDestroyFence(device.device, fence, VK_NULL_HANDLE);
+            vkDestroyFence(device.device, fence, nullptr);
         }
         for (auto &semaphore : wait_semaphores) {
-            vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+            vkDestroySemaphore(device.device, semaphore, nullptr);
         }
         for (auto &semaphore : signal_semaphores) {
-            vkDestroySemaphore(device.device, semaphore, VK_NULL_HANDLE);
+            vkDestroySemaphore(device.device, semaphore, nullptr);
         }
     }
     signal_fences = std::vector<VkFence>{swapchain.image_count};
@@ -316,11 +315,11 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     VkSemaphoreCreateInfo semaphore_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     for (auto i = 0; i < swapchain.image_count; i++) {
-        if (vkCreateFence(device.device, &fence_info, VK_NULL_HANDLE,
+        if (vkCreateFence(device.device, &fence_info, nullptr,
                           &signal_fences[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device.device, &semaphore_info, VK_NULL_HANDLE,
+            vkCreateSemaphore(device.device, &semaphore_info, nullptr,
                               &wait_semaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device.device, &semaphore_info, VK_NULL_HANDLE,
+            vkCreateSemaphore(device.device, &semaphore_info, nullptr,
                               &signal_semaphores[i]) != VK_SUCCESS) {
             return -1;
         }
@@ -356,7 +355,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
         .pSubpasses = &subpass,
         .dependencyCount = 1,
         .pDependencies = &dependency};
-    if (vkCreateRenderPass(device.device, &create_info, VK_NULL_HANDLE,
+    if (vkCreateRenderPass(device.device, &create_info, nullptr,
                            &render_pass) != VK_SUCCESS) {
         return -1;
     }
@@ -370,7 +369,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
             .width = swapchain.extent.width,
             .height = swapchain.extent.height,
             .layers = 1};
-        if (vkCreateFramebuffer(device.device, &create_info, VK_NULL_HANDLE,
+        if (vkCreateFramebuffer(device.device, &create_info, nullptr,
                                 &framebuffers[i]) != VK_SUCCESS) {
             return -1;
         }
@@ -389,7 +388,7 @@ allocate_descriptor_sets(const vkb::Device &device,
                                                    set_layout};
     VkDescriptorSetAllocateInfo allocate_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = VK_NULL_HANDLE,
+        .pNext = nullptr,
         .descriptorPool = descriptor_pool,
         .descriptorSetCount = swapchain.image_count,
         .pSetLayouts = set_layouts.data()};
@@ -404,7 +403,7 @@ allocate_descriptor_sets(const vkb::Device &device,
         image_info[i] = {.imageView = image_views[i],
                          .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
         descriptor_writes[i] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .pNext = VK_NULL_HANDLE,
+                                .pNext = nullptr,
                                 .dstSet = descriptor_sets[i],
                                 .dstBinding = 0,
                                 .dstArrayElement = 0,
@@ -412,11 +411,11 @@ allocate_descriptor_sets(const vkb::Device &device,
                                 .descriptorType =
                                     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                 .pImageInfo = &image_info[i],
-                                .pBufferInfo = VK_NULL_HANDLE,
-                                .pTexelBufferView = VK_NULL_HANDLE};
+                                .pBufferInfo = nullptr,
+                                .pTexelBufferView = nullptr};
     }
     vkUpdateDescriptorSets(device.device, descriptor_writes.size(),
-                           descriptor_writes.data(), 0, VK_NULL_HANDLE);
+                           descriptor_writes.data(), 0, nullptr);
     return {};
 }
 
@@ -480,7 +479,7 @@ std::optional<int> imgui_initialize(
     end_info.commandBufferCount = 1;
     end_info.pCommandBuffers = &command_buffer;
     vkEndCommandBuffer(command_buffer);
-    vkQueueSubmit(queue, 1, &end_info, VK_NULL_HANDLE);
+    vkQueueSubmit(queue, 1, &end_info, nullptr);
     vkDeviceWaitIdle(device.device);
     vkResetCommandBuffer(command_buffer,
                          VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
@@ -499,7 +498,7 @@ std::optional<int> queue_submit(
     uint32_t image_index;
     VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain,
                                             UINT64_MAX, wait_semaphores[index],
-                                            VK_NULL_HANDLE, &image_index);
+                                            nullptr, &image_index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
     } else if (result == VK_NOT_READY || result == VK_TIMEOUT) {
