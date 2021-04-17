@@ -98,9 +98,9 @@ foreach(kernel ${kernels})
         clspv -O=3
               --spv-version=1.3
               --cl-std=CLC++
+              --cl-single-precision-constant
               --inline-entry-points
               --uniform-workgroup-size
-              --pod-ubo
               -o "${kernel}"
               "bin/${kernel}"
       )
@@ -112,9 +112,9 @@ foreach(kernel ${kernels})
         clspv -O=3
               --spv-version=1.3
               --cl-std=CLC++
+              --cl-single-precision-constant
               --inline-entry-points
               --uniform-workgroup-size
-              --pod-ubo
               -o "${kernel}"
               "bin/${kernel}"
       )
@@ -125,9 +125,9 @@ foreach(kernel ${kernels})
       clspv -O=3
             --spv-version=1.3
             --cl-std=CLC++
+            --cl-single-precision-constant
             --inline-entry-points
             --uniform-workgroup-size
-            --pod-ubo
             -o "${kernel}"
             "bin/${kernel}"
     )
@@ -188,4 +188,4 @@ set(
 )
 add_definitions(-DVK_ZERO_CPU)
 
-add_executable(main ${VK_ZERO_SOURCES} "src/bin/main.hpp" "src/bin/main.cpp")
+add_executable(main ${VK_ZERO_SOURCES} "src/bin/main.cpp")
