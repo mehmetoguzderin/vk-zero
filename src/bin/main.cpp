@@ -156,6 +156,30 @@ int main(int argc, char *argv[]) {
                 [&](const uint32_t &index,
                     const VkCommandBuffer &command_buffer)
                     -> std::optional<int> {
+                    VkViewport viewport = {
+                        .x = 0.0f,
+                        .y = 0.0f,
+                        .width = (float)swapchain.extent.width,
+                        .height = (float)swapchain.extent.height,
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f};
+                    vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+                    VkRect2D scissor = {.offset = {0, 0},
+                                        .extent = swapchain.extent};
+                    vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+                    VkClearValue clear_values{{{0.0f, 0.0f, 0.0f, 0.0f}}};
+                    VkRenderPassBeginInfo begin_info = {
+                        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                        .renderPass = render_pass,
+                        .framebuffer = framebuffers[index],
+                        .renderArea = {.offset = {0, 0},
+                                       .extent = swapchain.extent},
+                        .clearValueCount = 1,
+                        .pClearValues = &clear_values};
+                    vkCmdBeginRenderPass(command_buffer, &begin_info,
+                                         VK_SUBPASS_CONTENTS_INLINE);
+                    ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
+                    vkCmdEndRenderPass(command_buffer);
                     int width, height;
                     SDL_Vulkan_GetDrawableSize(window, &width, &height);
                     vkCmdBindPipeline(command_buffer,
@@ -169,7 +193,7 @@ int main(int argc, char *argv[]) {
                         .pNext = nullptr,
                         .srcAccessMask = 0,
                         .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
                         .srcQueueFamilyIndex = queue_index,
                         .dstQueueFamilyIndex = queue_index,
@@ -182,19 +206,18 @@ int main(int argc, char *argv[]) {
                                              .layerCount = 1}};
                     vkCmdPipelineBarrier(
                         command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
-                        nullptr, 0, nullptr, 1,
-                        &begin_image_memory_barrier);
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0,
+                        nullptr, 1, &begin_image_memory_barrier);
                     vkCmdDispatch(command_buffer, width / GROUP_SIZE + 1,
                                   height / GROUP_SIZE + 1, 1);
                     VkImageMemoryBarrier end_image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                         .pNext = nullptr,
-                        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                        .dstAccessMask =
-                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        .srcAccessMask = VK_ACCESS_SHADER_READ_BIT |
+                                         VK_ACCESS_SHADER_WRITE_BIT,
+                        .dstAccessMask = 0,
                         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-                        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         .srcQueueFamilyIndex = queue_index,
                         .dstQueueFamilyIndex = queue_index,
                         .image = images[index],
@@ -204,35 +227,10 @@ int main(int argc, char *argv[]) {
                                              .levelCount = 1,
                                              .baseArrayLayer = 0,
                                              .layerCount = 1}};
-                    vkCmdPipelineBarrier(command_buffer,
-                                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0,
-                                         0, nullptr, 0, nullptr,
-                                         1, &end_image_memory_barrier);
-                    VkViewport viewport = {
-                        .x = 0.0f,
-                        .y = 0.0f,
-                        .width = (float)swapchain.extent.width,
-                        .height = (float)swapchain.extent.height,
-                        .minDepth = 0.0f,
-                        .maxDepth = 1.0f};
-                    vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-                    VkRect2D scissor = {.offset = {0, 0},
-                                        .extent = swapchain.extent};
-                    vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-                    VkClearValue clear_values{{{0.0f, 0.0f, 0.0f, 1.0f}}};
-                    VkRenderPassBeginInfo begin_info = {
-                        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                        .renderPass = render_pass,
-                        .framebuffer = framebuffers[index],
-                        .renderArea = {.offset = {0, 0},
-                                       .extent = swapchain.extent},
-                        .clearValueCount = 1,
-                        .pClearValues = &clear_values};
-                    vkCmdBeginRenderPass(command_buffer, &begin_info,
-                                         VK_SUBPASS_CONTENTS_INLINE);
-                    ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
-                    vkCmdEndRenderPass(command_buffer);
+                    vkCmdPipelineBarrier(
+                        command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
+                        nullptr, 1, &end_image_memory_barrier);
                     return {};
                 })) {
             if (error == 0) {

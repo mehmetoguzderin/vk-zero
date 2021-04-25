@@ -179,8 +179,7 @@ create_set_pipeline_layout(const vkb::Device &device,
         .flags = 0,
         .bindingCount = 1,
         .pBindings = &binding};
-    if (vkCreateDescriptorSetLayout(device.device, &set_create_info,
-                                    nullptr,
+    if (vkCreateDescriptorSetLayout(device.device, &set_create_info, nullptr,
                                     &set_layout) != VK_SUCCESS) {
         return -1;
     }
@@ -192,8 +191,7 @@ create_set_pipeline_layout(const vkb::Device &device,
         .pSetLayouts = &set_layout,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = nullptr};
-    if (vkCreatePipelineLayout(device.device, &pipeline_create_info,
-                               nullptr,
+    if (vkCreatePipelineLayout(device.device, &pipeline_create_info, nullptr,
                                &pipeline_layout) != VK_SUCCESS) {
         return -1;
     }
@@ -284,8 +282,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     } else {
         if (destroy) {
             for (auto &framebuffer : framebuffers) {
-                vkDestroyFramebuffer(device.device, framebuffer,
-                                     nullptr);
+                vkDestroyFramebuffer(device.device, framebuffer, nullptr);
             }
             vkDestroyRenderPass(device.device, render_pass, nullptr);
         }
@@ -327,12 +324,12 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     VkAttachmentDescription attachment = {
         .format = swapchain.image_format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_GENERAL};
     VkAttachmentReference color_attachment = {
         .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     VkSubpassDescription subpass = {.pipelineBindPoint =
@@ -342,7 +339,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
     VkSubpassDependency dependency = {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         .srcAccessMask = 0,
         .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -496,9 +493,9 @@ std::optional<int> queue_submit(
     std::function<std::optional<int>(const uint32_t &, const VkCommandBuffer &)>
         commands) {
     uint32_t image_index;
-    VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain,
-                                            UINT64_MAX, wait_semaphores[index],
-                                            nullptr, &image_index);
+    VkResult result =
+        vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
+                              wait_semaphores[index], nullptr, &image_index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
     } else if (result == VK_NOT_READY || result == VK_TIMEOUT) {

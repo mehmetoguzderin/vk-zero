@@ -13,19 +13,23 @@ template <typename T> struct prefix_exclusive_sum_t4 {
 
 #ifndef VK_ZERO_CPU
 
-kernel void device_kernel(write_only image2d_t output) {
+kernel void device_kernel(read_write image2d_t output) {
     int2 dimensions = get_image_dim(output);
     int x = (int)get_global_id(0);
     int y = (int)get_global_id(1);
     if (x >= dimensions.x || y >= dimensions.y)
         return;
-    write_imagef(output, ivec2(x, y),
-                 vec4((float)x / (float)dimensions.x,
-                      (float)y / (float)dimensions.y,
-                      prefix_exclusive_sum_t4<float>{{0.25f, 0.25f, 0.25f, 0.f}}
-                          .prefix_exclusive_sum()
-                          .data[3],
-                      1.f));
+    float4 pixel = read_imagef(output, ivec2(x, y));
+    if (pixel.w == 0.0) {
+        write_imagef(output, ivec2(x, y),
+                     pixel + vec4((float)x / (float)dimensions.x,
+                                  (float)y / (float)dimensions.y,
+                                  prefix_exclusive_sum_t4<float>{
+                                      {0.25f, 0.25f, 0.25f, 0.f}}
+                                      .prefix_exclusive_sum()
+                                      .data[3],
+                                  1.f));
+    }
 }
 
 #endif
