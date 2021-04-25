@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include "lib.h"
+#include "../lib.h"
 
 #ifdef VK_ZERO_CPU
 
