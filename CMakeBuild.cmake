@@ -1,5 +1,11 @@
 set(CMAKE_CXX_STANDARD 20)
 
+add_compile_definitions(VK_ZERO_CPU)
+add_compile_definitions(VK_NO_PROTOTYPES)
+add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
+add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
+add_compile_definitions(VMA_VULKAN_VERSION=1001000)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -85,6 +91,23 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif()
 FetchContent_MakeAvailable(volk)
 
+set(
+  VK_ZERO_SOURCES
+  ${imgui_SOURCE_DIR}/imconfig.h
+  ${imgui_SOURCE_DIR}/imgui.h
+  ${imgui_SOURCE_DIR}/imgui.cpp
+  ${imgui_SOURCE_DIR}/imgui_demo.cpp
+  ${imgui_SOURCE_DIR}/imgui_draw.cpp
+  ${imgui_SOURCE_DIR}/imgui_tables.cpp
+  ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.h
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
+)
+
+add_library(vk-zero STATIC ${VK_ZERO_SOURCES})
+
 file(GLOB kernels "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/*.hpp")
 foreach(kernel ${kernels})
   get_filename_component(kernel ${kernel} NAME)
@@ -147,35 +170,23 @@ foreach(kernel ${kernels})
     VERBATIM
     COMMAND_EXPAND_LISTS
   )
-  list(APPEND spirv_kernels "${CMAKE_BINARY_DIR}/${kernel}")
+  list(APPEND clspv-kernels "${CMAKE_BINARY_DIR}/${kernel}")
 endforeach()
 add_custom_target(
-  spirv_target ALL
-  DEPENDS ${spirv_kernels}
+  clspv-target ALL
+  DEPENDS ${clspv-kernels}
 )
 
-include_directories(${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
-include_directories(${tinygltf_SOURCE_DIR})
-include_directories(${vma_SOURCE_DIR}/include)
-link_libraries(SDL2-static)
-link_libraries(SDL2main)
-link_libraries(Vulkan-Headers)
-link_libraries(vk-bootstrap)
+target_include_directories(vk-zero PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+target_include_directories(vk-zero PUBLIC ${tinygltf_SOURCE_DIR})
+target_include_directories(vk-zero PUBLIC ${vma_SOURCE_DIR}/include)
+target_link_libraries(vk-zero PUBLIC SDL2-static)
+target_link_libraries(vk-zero PUBLIC SDL2main)
+target_link_libraries(vk-zero PUBLIC Vulkan-Headers)
+target_link_libraries(vk-zero PUBLIC vk-bootstrap)
 # link_libraries(clspv)
-link_libraries(glm)
-link_libraries(volk)
-set(
-  VK_ZERO_SOURCES
-  ${imgui_SOURCE_DIR}/imconfig.h
-  ${imgui_SOURCE_DIR}/imgui.h
-  ${imgui_SOURCE_DIR}/imgui.cpp
-  ${imgui_SOURCE_DIR}/imgui_demo.cpp
-  ${imgui_SOURCE_DIR}/imgui_draw.cpp
-  ${imgui_SOURCE_DIR}/imgui_tables.cpp
-  ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.h
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
-)
-add_definitions(-DVK_ZERO_CPU)
+target_link_libraries(vk-zero PUBLIC glm)
+target_link_libraries(vk-zero PUBLIC volk)
+
+link_libraries(vk-zero)
+add_dependencies(vk-zero clspv-target)
