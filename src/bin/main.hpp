@@ -20,16 +20,16 @@ kernel void device_kernel(read_write image2d_t output) {
     if (x >= dimensions.x || y >= dimensions.y)
         return;
     float4 pixel = read_imagef(output, ivec2(x, y));
-    if (pixel.w == 0.0) {
-        write_imagef(output, ivec2(x, y),
-                     pixel + vec4((float)x / (float)dimensions.x,
-                                  (float)y / (float)dimensions.y,
-                                  prefix_exclusive_sum_t4<float>{
-                                      {0.25f, 0.25f, 0.25f, 0.f}}
-                                      .prefix_exclusive_sum()
-                                      .data[3],
-                                  1.f));
-    }
+    if (pixel.w > 0.0)
+        return;
+    write_imagef(
+        output, ivec2(x, y),
+        pixel + vec4((float)x / (float)dimensions.x,
+                     (float)y / (float)dimensions.y,
+                     prefix_exclusive_sum_t4<float>{{0.25f, 0.25f, 0.25f, 0.f}}
+                         .prefix_exclusive_sum()
+                         .data[3],
+                     1.f));
 }
 
 #endif
