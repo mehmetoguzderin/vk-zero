@@ -31,8 +31,9 @@ using namespace glm;
 #define uint3 uvec3
 #define uint4 uvec4
 
-#define global
-#define kernel
+#define __kernel
+#define __global
+#define __constant const
 
 uint32_t GLOBAL_ID[3]{0, 0, 0};
 

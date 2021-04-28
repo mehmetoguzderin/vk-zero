@@ -122,6 +122,7 @@ foreach(kernel ${kernels})
               --cl-single-precision-constant
               --inline-entry-points
               --uniform-workgroup-size
+              --constant-args-ubo
               -o "${kernel}"
               "bin/${kernel}"
       )
@@ -136,6 +137,7 @@ foreach(kernel ${kernels})
               --cl-single-precision-constant
               --inline-entry-points
               --uniform-workgroup-size
+              --constant-args-ubo
               -o "${kernel}"
               "bin/${kernel}"
       )
@@ -149,6 +151,7 @@ foreach(kernel ${kernels})
             --cl-single-precision-constant
             --inline-entry-points
             --uniform-workgroup-size
+            --constant-args-ubo
             -o "${kernel}"
             "bin/${kernel}"
     )

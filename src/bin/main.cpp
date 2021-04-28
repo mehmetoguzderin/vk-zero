@@ -32,6 +32,16 @@ int main(int argc, char *argv[]) {
     if (auto error = create_descriptor_pool(device, descriptor_pool)) {
         return -1;
     }
+    Constants constants{.color = vec4(1.f, 1.f, 1.f, 1.f)};
+    VkBuffer buffer_uniform;
+    VmaAllocation allocation_uniform;
+    VmaAllocationInfo allocation_info_uniform;
+    if (auto error = create_buffer_uniform(allocator, sizeof(constants),
+                                           buffer_uniform, allocation_uniform,
+                                           allocation_info_uniform)) {
+        return -1;
+    }
+    memcpy(allocation_info_uniform.pMappedData, &constants, sizeof(constants));
     VkDescriptorSetLayout set_layout;
     VkPipelineLayout pipeline_layout;
     if (auto error =
@@ -65,16 +75,15 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     std::vector<VkDescriptorSet> descriptor_sets;
-    if (auto error =
-            allocate_descriptor_sets(device, swapchain, image_views, set_layout,
-                                     descriptor_pool, descriptor_sets)) {
+    if (auto error = allocate_descriptor_sets(
+            device, buffer_uniform, swapchain, image_views, set_layout,
+            descriptor_pool, descriptor_sets)) {
         return -1;
     }
     std::vector<VkCommandBuffer> command_buffers;
-    if (auto error = allocate_command_buffers(
-            window, device, queue_index, command_pool, pipeline_layout,
-            pipeline, swapchain, images, image_views, descriptor_sets,
-            command_buffers)) {
+    if (auto error =
+            allocate_command_buffers(window, device, queue_index, command_pool,
+                                     swapchain, command_buffers)) {
         return -1;
     }
     ImGuiIO imgui_io;
@@ -102,14 +111,13 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         if (auto error = allocate_descriptor_sets(
-                device, swapchain, image_views, set_layout, descriptor_pool,
-                descriptor_sets)) {
+                device, buffer_uniform, swapchain, image_views, set_layout,
+                descriptor_pool, descriptor_sets)) {
             return -1;
         }
-        if (auto error = allocate_command_buffers(
-                window, device, queue_index, command_pool, pipeline_layout,
-                pipeline, swapchain, images, image_views, descriptor_sets,
-                command_buffers)) {
+        if (auto error = allocate_command_buffers(window, device, queue_index,
+                                                  command_pool, swapchain,
+                                                  command_buffers)) {
             return -1;
         }
         ImGui_ImplVulkan_SetMinImageCount(swapchain.image_count);
@@ -271,6 +279,7 @@ int main(int argc, char *argv[]) {
     vkDestroyShaderModule(device.device, shader_module, nullptr);
     vkDestroyPipelineLayout(device.device, pipeline_layout, nullptr);
     vkDestroyDescriptorSetLayout(device.device, set_layout, nullptr);
+    vmaDestroyBuffer(allocator, buffer_uniform, allocation_uniform);
     vkDestroyDescriptorPool(device.device, descriptor_pool, nullptr);
     vkDestroyCommandPool(device.device, command_pool, nullptr);
     vmaDestroyAllocator(allocator);

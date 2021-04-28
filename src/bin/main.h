@@ -5,6 +5,16 @@
 
 #ifdef VK_ZERO_CPU
 
+#else
+
+#endif
+
+struct Constants {
+    float4 color;
+};
+
+#ifdef VK_ZERO_CPU
+
 #include <chrono>
 #include <cstdio>
 #include <fstream>
@@ -163,22 +173,51 @@ std::optional<int> create_descriptor_pool(const vkb::Device &device,
     return {};
 }
 
+std::optional<int> create_buffer_uniform(const VmaAllocator &allocator,
+                                         const VkDeviceSize &size,
+                                         VkBuffer &buffer,
+                                         VmaAllocation &allocation,
+                                         VmaAllocationInfo &allocation_info) {
+    VkBufferCreateInfo buffer_create_info = {
+        VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    buffer_create_info.size = size;
+    buffer_create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VmaAllocationCreateInfo allocation_create_info = {};
+    allocation_create_info.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    allocation_create_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    allocation_create_info.requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    if (vmaCreateBuffer(allocator, &buffer_create_info, &allocation_create_info,
+                        &buffer, &allocation, &allocation_info) != VK_SUCCESS) {
+        return -1;
+    }
+    return {};
+}
+
 std::optional<int>
 create_set_pipeline_layout(const vkb::Device &device,
                            VkDescriptorSetLayout &set_layout,
                            VkPipelineLayout &pipeline_layout) {
-    VkDescriptorSetLayoutBinding binding{
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-        .pImmutableSamplers = nullptr};
+    std::vector<VkDescriptorSetLayoutBinding> bindings{
+        {.binding = 0,
+         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+         .descriptorCount = 1,
+         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+         .pImmutableSamplers = nullptr},
+        {.binding = 1,
+         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+         .descriptorCount = 1,
+         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+         .pImmutableSamplers = nullptr}};
     VkDescriptorSetLayoutCreateInfo set_create_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .bindingCount = 1,
-        .pBindings = &binding};
+        .bindingCount = (uint32_t)bindings.size(),
+        .pBindings = bindings.data()};
     if (vkCreateDescriptorSetLayout(device.device, &set_create_info, nullptr,
                                     &set_layout) != VK_SUCCESS) {
         return -1;
@@ -376,6 +415,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
 
 std::optional<int>
 allocate_descriptor_sets(const vkb::Device &device,
+                         const VkBuffer &buffer_uniform,
                          const vkb::Swapchain &swapchain,
                          const std::vector<VkImageView> &image_views,
                          const VkDescriptorSetLayout &set_layout,
@@ -395,21 +435,36 @@ allocate_descriptor_sets(const vkb::Device &device,
         return -1;
     }
     std::vector<VkDescriptorImageInfo> image_info{swapchain.image_count};
-    std::vector<VkWriteDescriptorSet> descriptor_writes{swapchain.image_count};
+    std::vector<VkDescriptorBufferInfo> uniform_info{swapchain.image_count};
+    std::vector<VkWriteDescriptorSet> descriptor_writes{swapchain.image_count *
+                                                        2};
     for (auto i = 0; i < swapchain.image_count; ++i) {
         image_info[i] = {.imageView = image_views[i],
                          .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
-        descriptor_writes[i] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .pNext = nullptr,
-                                .dstSet = descriptor_sets[i],
-                                .dstBinding = 0,
-                                .dstArrayElement = 0,
-                                .descriptorCount = 1,
-                                .descriptorType =
-                                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                .pImageInfo = &image_info[i],
-                                .pBufferInfo = nullptr,
-                                .pTexelBufferView = nullptr};
+        uniform_info[i] = {
+            .buffer = buffer_uniform, .offset = 0, .range = VK_WHOLE_SIZE};
+        descriptor_writes[i * 2 + 0] = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = descriptor_sets[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .pImageInfo = &image_info[i],
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr};
+        descriptor_writes[i * 2 + 1] = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = descriptor_sets[i],
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo = nullptr,
+            .pBufferInfo = &uniform_info[i],
+            .pTexelBufferView = nullptr};
     }
     vkUpdateDescriptorSets(device.device, descriptor_writes.size(),
                            descriptor_writes.data(), 0, nullptr);
@@ -418,11 +473,7 @@ allocate_descriptor_sets(const vkb::Device &device,
 
 std::optional<int> allocate_command_buffers(
     SDL_Window *&window, const vkb::Device &device, const uint32_t &queue_index,
-    const VkCommandPool &command_pool, const VkPipelineLayout &pipeline_layout,
-    const VkPipeline &pipeline, const vkb::Swapchain &swapchain,
-    const std::vector<VkImage> &images,
-    const std::vector<VkImageView> &image_views,
-    const std::vector<VkDescriptorSet> &descriptor_sets,
+    const VkCommandPool &command_pool, const vkb::Swapchain &swapchain,
     std::vector<VkCommandBuffer> &command_buffers) {
     command_buffers = std::vector<VkCommandBuffer>{swapchain.image_count};
     VkCommandBufferAllocateInfo allocate_info = {

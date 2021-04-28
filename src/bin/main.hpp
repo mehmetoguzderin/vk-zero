@@ -13,7 +13,8 @@ template <typename T> struct prefix_exclusive_sum_t4 {
 
 #ifndef VK_ZERO_CPU
 
-kernel void device_kernel(read_write image2d_t output) {
+__kernel void device_kernel(read_write image2d_t output,
+                            __constant Constants *constants) {
     int2 dimensions = get_image_dim(output);
     int x = (int)get_global_id(0);
     int y = (int)get_global_id(1);
@@ -29,7 +30,8 @@ kernel void device_kernel(read_write image2d_t output) {
                      prefix_exclusive_sum_t4<float>{{0.25f, 0.25f, 0.25f, 0.f}}
                          .prefix_exclusive_sum()
                          .data[3],
-                     1.f));
+                     1.f) *
+                    constants->color);
 }
 
 #endif
