@@ -8,8 +8,7 @@
 #else
 
 #endif
-
-struct Constants {
+struct MainConstants {
     float4 color;
 };
 
@@ -26,8 +25,6 @@ struct Constants {
 #include <thread>
 #include <tuple>
 #include <vector>
-
-const uint32_t GROUP_SIZE = 16;
 
 std::optional<int> initialize() {
     if (auto result = volkInitialize(); result != VK_SUCCESS) {
@@ -262,7 +259,8 @@ std::optional<int> create_shader_module(const vkb::Device &device,
 std::optional<int> create_pipeline(const vkb::Device &device,
                                    const VkPipelineLayout &pipeline_layout,
                                    const VkShaderModule &shader_module,
-                                   const char *&name, VkPipeline &pipeline) {
+                                   const uint3 &local_size, const char *&name,
+                                   VkPipeline &pipeline) {
     VkSpecializationMapEntry map_entries[3]{{.constantID = 0,
                                              .offset = sizeof(uint32_t) * 0,
                                              .size = sizeof(uint32_t)},
@@ -272,11 +270,10 @@ std::optional<int> create_pipeline(const vkb::Device &device,
                                             {.constantID = 2,
                                              .offset = sizeof(uint32_t) * 2,
                                              .size = sizeof(uint32_t)}};
-    uint32_t data[3] = {GROUP_SIZE, GROUP_SIZE, 1};
     VkSpecializationInfo specialization_info{.mapEntryCount = 3,
                                              .pMapEntries = map_entries,
-                                             .dataSize = sizeof(uint32_t) * 3,
-                                             .pData = data};
+                                             .dataSize = sizeof(local_size),
+                                             .pData = &local_size};
     VkComputePipelineCreateInfo create_info{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .pNext = nullptr,
@@ -416,6 +413,7 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
 std::optional<int>
 allocate_descriptor_sets(const vkb::Device &device,
                          const VkBuffer &buffer_uniform,
+                         const VmaAllocationInfo &allocation_info_uniform,
                          const vkb::Swapchain &swapchain,
                          const std::vector<VkImageView> &image_views,
                          const VkDescriptorSetLayout &set_layout,

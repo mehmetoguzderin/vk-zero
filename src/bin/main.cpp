@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     if (auto error = create_descriptor_pool(device, descriptor_pool)) {
         return -1;
     }
-    Constants constants{.color = vec4(1.f, 1.f, 1.f, 1.f)};
+    MainConstants constants{.color = vec4(1.f, 1.f, 1.f, 1.f)};
     VkBuffer buffer_uniform;
     VmaAllocation allocation_uniform;
     VmaAllocationInfo allocation_info_uniform;
@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
             create_set_pipeline_layout(device, set_layout, pipeline_layout)) {
         return -1;
     }
+    uint3 local_size = uvec3(16, 16, 1);
     auto module_name = "main.hpp";
     VkShaderModule shader_module;
     if (auto error = create_shader_module(device, module_name, shader_module)) {
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
     auto entry_name = "device_kernel";
     VkPipeline pipeline;
     if (auto error = create_pipeline(device, pipeline_layout, shader_module,
-                                     entry_name, pipeline)) {
+                                     local_size, entry_name, pipeline)) {
         return -1;
     }
     vkb::Swapchain swapchain;
@@ -76,8 +77,8 @@ int main(int argc, char *argv[]) {
     }
     std::vector<VkDescriptorSet> descriptor_sets;
     if (auto error = allocate_descriptor_sets(
-            device, buffer_uniform, swapchain, image_views, set_layout,
-            descriptor_pool, descriptor_sets)) {
+            device, buffer_uniform, allocation_info_uniform, swapchain,
+            image_views, set_layout, descriptor_pool, descriptor_sets)) {
         return -1;
     }
     std::vector<VkCommandBuffer> command_buffers;
@@ -111,8 +112,8 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         if (auto error = allocate_descriptor_sets(
-                device, buffer_uniform, swapchain, image_views, set_layout,
-                descriptor_pool, descriptor_sets)) {
+                device, buffer_uniform, allocation_info_uniform, swapchain,
+                image_views, set_layout, descriptor_pool, descriptor_sets)) {
             return -1;
         }
         if (auto error = allocate_command_buffers(window, device, queue_index,
@@ -216,8 +217,8 @@ int main(int argc, char *argv[]) {
                         command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0,
                         nullptr, 1, &begin_image_memory_barrier);
-                    vkCmdDispatch(command_buffer, width / GROUP_SIZE + 1,
-                                  height / GROUP_SIZE + 1, 1);
+                    vkCmdDispatch(command_buffer, width / local_size.x + 1,
+                                  height / local_size.y + 1, 1);
                     VkImageMemoryBarrier end_image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                         .pNext = nullptr,

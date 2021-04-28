@@ -14,7 +14,7 @@ template <typename T> struct prefix_exclusive_sum_t4 {
 #ifndef VK_ZERO_CPU
 
 __kernel void device_kernel(read_write image2d_t output,
-                            __constant Constants *constants) {
+                            __constant MainConstants *constants) {
     int2 dimensions = get_image_dim(output);
     int x = (int)get_global_id(0);
     int y = (int)get_global_id(1);
