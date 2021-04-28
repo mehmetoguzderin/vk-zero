@@ -87,7 +87,8 @@ std::optional<int> create_device_allocator(const vkb::Instance &instance,
     if (auto result = vkb::PhysicalDeviceSelector{instance}
                           .set_minimum_version(1, 1)
                           .set_required_features(
-                              {.shaderStorageImageWriteWithoutFormat = VK_TRUE})
+                              {.shaderStorageImageWriteWithoutFormat = VK_TRUE,
+                               .shaderInt64 = VK_TRUE})
                           .set_required_features_11(
                               {.variablePointersStorageBuffer = VK_TRUE,
                                .variablePointers = VK_TRUE})
@@ -439,6 +440,8 @@ allocate_descriptor_sets(const vkb::Device &device,
     for (auto i = 0; i < swapchain.image_count; ++i) {
         image_info[i] = {.imageView = image_views[i],
                          .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
+        buffer_info[i] = {
+            .buffer = buffer_uniform, .offset = 0, .range = VK_WHOLE_SIZE};
         descriptor_writes[i * 2 + 0] = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
@@ -450,8 +453,6 @@ allocate_descriptor_sets(const vkb::Device &device,
             .pImageInfo = &image_info[i],
             .pBufferInfo = nullptr,
             .pTexelBufferView = nullptr};
-        buffer_info[i] = {
-            .buffer = buffer_uniform, .offset = 0, .range = VK_WHOLE_SIZE};
         descriptor_writes[i * 2 + 1] = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
