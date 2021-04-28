@@ -433,14 +433,12 @@ allocate_descriptor_sets(const vkb::Device &device,
         return -1;
     }
     std::vector<VkDescriptorImageInfo> image_info{swapchain.image_count};
-    std::vector<VkDescriptorBufferInfo> uniform_info{swapchain.image_count};
+    std::vector<VkDescriptorBufferInfo> buffer_info{swapchain.image_count};
     std::vector<VkWriteDescriptorSet> descriptor_writes{swapchain.image_count *
                                                         2};
     for (auto i = 0; i < swapchain.image_count; ++i) {
         image_info[i] = {.imageView = image_views[i],
                          .imageLayout = VK_IMAGE_LAYOUT_GENERAL};
-        uniform_info[i] = {
-            .buffer = buffer_uniform, .offset = 0, .range = VK_WHOLE_SIZE};
         descriptor_writes[i * 2 + 0] = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
@@ -452,6 +450,8 @@ allocate_descriptor_sets(const vkb::Device &device,
             .pImageInfo = &image_info[i],
             .pBufferInfo = nullptr,
             .pTexelBufferView = nullptr};
+        buffer_info[i] = {
+            .buffer = buffer_uniform, .offset = 0, .range = VK_WHOLE_SIZE};
         descriptor_writes[i * 2 + 1] = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
@@ -461,7 +461,7 @@ allocate_descriptor_sets(const vkb::Device &device,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .pImageInfo = nullptr,
-            .pBufferInfo = &uniform_info[i],
+            .pBufferInfo = &buffer_info[i],
             .pTexelBufferView = nullptr};
     }
     vkUpdateDescriptorSets(device.device, descriptor_writes.size(),
