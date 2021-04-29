@@ -9,7 +9,7 @@
 
 #endif
 
-#define ELEMENT_WIDTH 128
+#define ELEMENT_WIDTH 2048
 
 struct ComputeWeightedAddElement {
     float4 element[ELEMENT_WIDTH];

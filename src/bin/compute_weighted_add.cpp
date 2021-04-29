@@ -19,20 +19,28 @@ int main(int argc, char *argv[]) {
                                              device, allocator)) {
         return -1;
     }
-    VkQueue queue;
-    uint32_t queue_index;
-    if (auto error = get_queue(device, queue, queue_index)) {
+    VkQueue graphics_queue, compute_queue;
+    uint32_t graphics_queue_index, compute_queue_index;
+    if (auto error = get_graphics_compute_queue(
+            device, graphics_queue, graphics_queue_index, compute_queue,
+            compute_queue_index)) {
         return -1;
     }
-    VkCommandPool command_pool;
-    if (auto error = create_command_pool(device, queue_index, command_pool)) {
+    VkCommandPool graphics_command_pool;
+    if (auto error = create_command_pool(device, graphics_queue_index,
+                                         graphics_command_pool)) {
+        return -1;
+    }
+    VkCommandPool compute_command_pool;
+    if (auto error = create_command_pool(device, compute_queue_index,
+                                         compute_command_pool)) {
         return -1;
     }
     VkDescriptorPool descriptor_pool;
     if (auto error = create_descriptor_pool(device, descriptor_pool)) {
         return -1;
     }
-    uint64_t length = 4095;
+    uint64_t length = 16384;
     VkBuffer buffer_storage_a;
     VmaAllocation allocation_storage_a;
     VmaAllocationInfo allocation_info_storage_a;
@@ -91,7 +99,7 @@ int main(int argc, char *argv[]) {
             device, set_layout, pipeline_layout)) {
         return -1;
     }
-    uint3 local_size = uvec3(16, 16, 1);
+    uint3 local_size = uvec3(16, 32, 1);
     auto module_name = "compute_weighted_add.hpp";
     VkShaderModule shader_module;
     if (auto error = create_shader_module(device, module_name, shader_module)) {
@@ -128,10 +136,16 @@ int main(int argc, char *argv[]) {
             descriptor_sets)) {
         return -1;
     }
-    std::vector<VkCommandBuffer> command_buffers;
-    if (auto error =
-            allocate_command_buffers(window, device, queue_index, command_pool,
-                                     swapchain, command_buffers)) {
+    std::vector<VkCommandBuffer> graphics_command_buffers;
+    if (auto error = allocate_command_buffers(
+            window, device, graphics_queue_index, graphics_command_pool,
+            swapchain, graphics_command_buffers)) {
+        return -1;
+    }
+    std::vector<VkCommandBuffer> compute_command_buffers;
+    if (auto error = allocate_command_buffers(
+            window, device, compute_queue_index, compute_command_pool,
+            swapchain, compute_command_buffers)) {
         return -1;
     }
     uint32_t image_index = 0;
@@ -143,7 +157,7 @@ int main(int argc, char *argv[]) {
         VK_SUCCESS) {
         return -1;
     }
-    if (vkResetCommandBuffer(command_buffers[image_index],
+    if (vkResetCommandBuffer(compute_command_buffers[image_index],
                              VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT) !=
         VK_SUCCESS) {
         return -1;
@@ -151,18 +165,19 @@ int main(int argc, char *argv[]) {
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-    if (vkBeginCommandBuffer(command_buffers[image_index], &begin_info) !=
-        VK_SUCCESS) {
+    if (vkBeginCommandBuffer(compute_command_buffers[image_index],
+                             &begin_info) != VK_SUCCESS) {
         return -1;
     }
-    vkCmdBindPipeline(command_buffers[image_index],
+    vkCmdBindPipeline(compute_command_buffers[image_index],
                       VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-    vkCmdBindDescriptorSets(command_buffers[image_index],
+    vkCmdBindDescriptorSets(compute_command_buffers[image_index],
                             VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout, 0,
                             1, &descriptor_sets[image_index], 0, nullptr);
-    vkCmdDispatch(command_buffers[image_index],
+    vkCmdDispatch(compute_command_buffers[image_index],
                   length / (local_size.x * local_size.y) + 1, 1, 1);
-    if (vkEndCommandBuffer(command_buffers[image_index]) != VK_SUCCESS) {
+    if (vkEndCommandBuffer(compute_command_buffers[image_index]) !=
+        VK_SUCCESS) {
         return -1;
     }
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
@@ -172,19 +187,23 @@ int main(int argc, char *argv[]) {
                                 .pWaitDstStageMask = wait_stages,
                                 .commandBufferCount = 1,
                                 .pCommandBuffers =
-                                    &command_buffers[image_index],
+                                    &compute_command_buffers[image_index],
                                 .signalSemaphoreCount = 0,
                                 .pSignalSemaphores = nullptr};
-    if (vkQueueSubmit(queue, 1, &submit_info, signal_fences[image_index]) !=
-        VK_SUCCESS) {
+    if (vkQueueSubmit(compute_queue, 1, &submit_info,
+                      signal_fences[image_index]) != VK_SUCCESS) {
         return -1;
     }
     vkDeviceWaitIdle(device.device);
     auto &element = pointer_a[4094];
     std::cout << element.x << " " << element.y << " " << element.z << " "
               << element.w << "\n";
-    vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
-                         command_buffers.data());
+    vkFreeCommandBuffers(device.device, compute_command_pool,
+                         compute_command_buffers.size(),
+                         compute_command_buffers.data());
+    vkFreeCommandBuffers(device.device, graphics_command_pool,
+                         graphics_command_buffers.size(),
+                         graphics_command_buffers.data());
     vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
                          descriptor_sets.data());
     for (auto &framebuffer : framebuffers) {
@@ -212,7 +231,8 @@ int main(int argc, char *argv[]) {
     vmaDestroyBuffer(allocator, buffer_storage_b, allocation_storage_b);
     vmaDestroyBuffer(allocator, buffer_storage_a, allocation_storage_a);
     vkDestroyDescriptorPool(device.device, descriptor_pool, nullptr);
-    vkDestroyCommandPool(device.device, command_pool, nullptr);
+    vkDestroyCommandPool(device.device, compute_command_pool, nullptr);
+    vkDestroyCommandPool(device.device, graphics_command_pool, nullptr);
     vmaDestroyAllocator(allocator);
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, nullptr);

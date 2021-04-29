@@ -19,13 +19,21 @@ int main(int argc, char *argv[]) {
                                              device, allocator)) {
         return -1;
     }
-    VkQueue queue;
-    uint32_t queue_index;
-    if (auto error = get_queue(device, queue, queue_index)) {
+    VkQueue graphics_queue, compute_queue;
+    uint32_t graphics_queue_index, compute_queue_index;
+    if (auto error = get_graphics_compute_queue(
+            device, graphics_queue, graphics_queue_index, compute_queue,
+            compute_queue_index)) {
         return -1;
     }
-    VkCommandPool command_pool;
-    if (auto error = create_command_pool(device, queue_index, command_pool)) {
+    VkCommandPool graphics_command_pool;
+    if (auto error = create_command_pool(device, graphics_queue_index,
+                                         graphics_command_pool)) {
+        return -1;
+    }
+    VkCommandPool compute_command_pool;
+    if (auto error = create_command_pool(device, compute_queue_index,
+                                         compute_command_pool)) {
         return -1;
     }
     VkDescriptorPool descriptor_pool;
@@ -81,17 +89,23 @@ int main(int argc, char *argv[]) {
             image_views, set_layout, descriptor_pool, descriptor_sets)) {
         return -1;
     }
-    std::vector<VkCommandBuffer> command_buffers;
-    if (auto error =
-            allocate_command_buffers(window, device, queue_index, command_pool,
-                                     swapchain, command_buffers)) {
+    std::vector<VkCommandBuffer> graphics_command_buffers;
+    if (auto error = allocate_command_buffers(
+            window, device, graphics_queue_index, graphics_command_pool,
+            swapchain, graphics_command_buffers)) {
+        return -1;
+    }
+    std::vector<VkCommandBuffer> compute_command_buffers;
+    if (auto error = allocate_command_buffers(
+            window, device, compute_queue_index, compute_command_pool,
+            swapchain, compute_command_buffers)) {
         return -1;
     }
     ImGuiIO imgui_io;
-    if (auto error =
-            imgui_initialize(window, instance, physical_device, device, queue,
-                             queue_index, descriptor_pool, swapchain,
-                             render_pass, command_buffers[0], imgui_io)) {
+    if (auto error = imgui_initialize(window, instance, physical_device, device,
+                                      graphics_queue, graphics_queue_index,
+                                      descriptor_pool, swapchain, render_pass,
+                                      graphics_command_buffers[0], imgui_io)) {
         return -1;
     }
     uint32_t index = 0;
@@ -100,8 +114,12 @@ int main(int argc, char *argv[]) {
     bool show_demo_window = true;
     auto reset = [&]() -> std::optional<int> {
         vkDeviceWaitIdle(device.device);
-        vkFreeCommandBuffers(device.device, command_pool,
-                             command_buffers.size(), command_buffers.data());
+        vkFreeCommandBuffers(device.device, compute_command_pool,
+                             compute_command_buffers.size(),
+                             compute_command_buffers.data());
+        vkFreeCommandBuffers(device.device, graphics_command_pool,
+                             graphics_command_buffers.size(),
+                             graphics_command_buffers.data());
         vkFreeDescriptorSets(device.device, descriptor_pool,
                              descriptor_sets.size(), descriptor_sets.data());
         if (auto error =
@@ -116,9 +134,14 @@ int main(int argc, char *argv[]) {
                 image_views, set_layout, descriptor_pool, descriptor_sets)) {
             return -1;
         }
-        if (auto error = allocate_command_buffers(window, device, queue_index,
-                                                  command_pool, swapchain,
-                                                  command_buffers)) {
+        if (auto error = allocate_command_buffers(
+                window, device, graphics_queue_index, graphics_command_pool,
+                swapchain, graphics_command_buffers)) {
+            return -1;
+        }
+        if (auto error = allocate_command_buffers(
+                window, device, compute_queue_index, compute_command_pool,
+                swapchain, compute_command_buffers)) {
             return -1;
         }
         ImGui_ImplVulkan_SetMinImageCount(swapchain.image_count);
@@ -152,6 +175,8 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
+        int width, height;
+        SDL_Vulkan_GetDrawableSize(window, &width, &height);
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
@@ -159,9 +184,10 @@ int main(int argc, char *argv[]) {
             ImGui::ShowDemoWindow(&show_demo_window);
         ImGui::Render();
         ImDrawData *draw_data = ImGui::GetDrawData();
-        if (auto error = queue_submit(
-                device, queue, swapchain, signal_fences, wait_semaphores,
-                signal_semaphores, command_buffers, index,
+        if (auto error = frame_submit(
+                device, graphics_queue, compute_queue, swapchain, signal_fences,
+                wait_semaphores, signal_semaphores, graphics_command_buffers,
+                compute_command_buffers, index,
                 [&](const uint32_t &index,
                     const VkCommandBuffer &command_buffer)
                     -> std::optional<int> {
@@ -189,23 +215,22 @@ int main(int argc, char *argv[]) {
                                          VK_SUBPASS_CONTENTS_INLINE);
                     ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
                     vkCmdEndRenderPass(command_buffer);
-                    int width, height;
-                    SDL_Vulkan_GetDrawableSize(window, &width, &height);
                     vkCmdBindPipeline(command_buffer,
                                       VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
                     vkCmdBindDescriptorSets(
                         command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         pipeline_layout, 0, 1, &descriptor_sets[index], 0,
                         nullptr);
-                    VkImageMemoryBarrier begin_image_memory_barrier{
+                    VkImageMemoryBarrier image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                         .pNext = nullptr,
                         .srcAccessMask = 0,
-                        .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT |
+                                         VK_ACCESS_SHADER_WRITE_BIT,
                         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-                        .srcQueueFamilyIndex = queue_index,
-                        .dstQueueFamilyIndex = queue_index,
+                        .srcQueueFamilyIndex = graphics_queue_index,
+                        .dstQueueFamilyIndex = compute_queue_index,
                         .image = images[index],
                         .subresourceRange = {.aspectMask =
                                                  VK_IMAGE_ASPECT_COLOR_BIT,
@@ -214,12 +239,24 @@ int main(int argc, char *argv[]) {
                                              .baseArrayLayer = 0,
                                              .layerCount = 1}};
                     vkCmdPipelineBarrier(
-                        command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        command_buffer,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0,
-                        nullptr, 1, &begin_image_memory_barrier);
+                        nullptr, 1, &image_memory_barrier);
+                    return {};
+                },
+                [&](const uint32_t &index,
+                    const VkCommandBuffer &command_buffer)
+                    -> std::optional<int> {
+                    vkCmdBindPipeline(command_buffer,
+                                      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+                    vkCmdBindDescriptorSets(
+                        command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        pipeline_layout, 0, 1, &descriptor_sets[index], 0,
+                        nullptr);
                     vkCmdDispatch(command_buffer, width / local_size.x + 1,
                                   height / local_size.y + 1, 1);
-                    VkImageMemoryBarrier end_image_memory_barrier{
+                    VkImageMemoryBarrier image_memory_barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                         .pNext = nullptr,
                         .srcAccessMask = VK_ACCESS_SHADER_READ_BIT |
@@ -227,8 +264,8 @@ int main(int argc, char *argv[]) {
                         .dstAccessMask = 0,
                         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                         .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                        .srcQueueFamilyIndex = queue_index,
-                        .dstQueueFamilyIndex = queue_index,
+                        .srcQueueFamilyIndex = compute_queue_index,
+                        .dstQueueFamilyIndex = graphics_queue_index,
                         .image = images[index],
                         .subresourceRange = {.aspectMask =
                                                  VK_IMAGE_ASPECT_COLOR_BIT,
@@ -239,7 +276,7 @@ int main(int argc, char *argv[]) {
                     vkCmdPipelineBarrier(
                         command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
-                        nullptr, 1, &end_image_memory_barrier);
+                        nullptr, 1, &image_memory_barrier);
                     return {};
                 })) {
             if (error == 0) {
@@ -257,8 +294,12 @@ int main(int argc, char *argv[]) {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-    vkFreeCommandBuffers(device.device, command_pool, command_buffers.size(),
-                         command_buffers.data());
+    vkFreeCommandBuffers(device.device, compute_command_pool,
+                         compute_command_buffers.size(),
+                         compute_command_buffers.data());
+    vkFreeCommandBuffers(device.device, graphics_command_pool,
+                         graphics_command_buffers.size(),
+                         graphics_command_buffers.data());
     vkFreeDescriptorSets(device.device, descriptor_pool, descriptor_sets.size(),
                          descriptor_sets.data());
     for (auto &framebuffer : framebuffers) {
@@ -282,7 +323,8 @@ int main(int argc, char *argv[]) {
     vkDestroyDescriptorSetLayout(device.device, set_layout, nullptr);
     vmaDestroyBuffer(allocator, buffer_uniform, allocation_uniform);
     vkDestroyDescriptorPool(device.device, descriptor_pool, nullptr);
-    vkDestroyCommandPool(device.device, command_pool, nullptr);
+    vkDestroyCommandPool(device.device, compute_command_pool, nullptr);
+    vkDestroyCommandPool(device.device, graphics_command_pool, nullptr);
     vmaDestroyAllocator(allocator);
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, nullptr);

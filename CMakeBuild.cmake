@@ -158,6 +158,8 @@ foreach(kernel ${kernels})
   endif()
   add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/${kernel}"
+    COMMAND ${CMAKE_COMMAND} -E rm -f
+                             "${CMAKE_BINARY_DIR}/${kernel}"
     COMMAND ${CLSPV_COMMAND}
     COMMAND spirv-opt --strip-reflect
                       -O

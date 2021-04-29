@@ -117,15 +117,25 @@ std::optional<int> create_device_allocator(const vkb::Instance &instance,
     return {};
 }
 
-std::optional<int> get_queue(const vkb::Device &device, VkQueue &queue,
-                             uint32_t &queue_index) {
-    if (auto result = device.get_queue(vkb::QueueType::present);
+std::optional<int> get_graphics_compute_queue(const vkb::Device &device,
+                                              VkQueue &graphics_queue,
+                                              uint32_t &graphics_queue_index,
+                                              VkQueue &compute_queue,
+                                              uint32_t &compute_queue_index) {
+    if (auto result = device.get_queue_index(vkb::QueueType::present);
         !result.has_value()) {
         return -1;
     } else {
-        queue = result.value();
+        graphics_queue_index = result.value();
     }
-    queue_index = device.get_queue_index(vkb::QueueType::present).value();
+    vkGetDeviceQueue(device.device, graphics_queue_index, 0, &graphics_queue);
+    if (auto result = device.get_queue_index(vkb::QueueType::present);
+        !result.has_value()) {
+        return -1;
+    } else {
+        compute_queue_index = result.value();
+    }
+    vkGetDeviceQueue(device.device, compute_queue_index, 0, &compute_queue);
     return {};
 }
 
@@ -340,19 +350,23 @@ std::optional<int> create_swapchain_semaphores_fences_render_pass_framebuffers(
             vkDestroySemaphore(device.device, semaphore, nullptr);
         }
     }
-    signal_fences = std::vector<VkFence>{swapchain.image_count};
+    signal_fences = std::vector<VkFence>{swapchain.image_count * 2};
     wait_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
-    signal_semaphores = std::vector<VkSemaphore>{swapchain.image_count};
+    signal_semaphores = std::vector<VkSemaphore>{swapchain.image_count * 2};
     VkFenceCreateInfo fence_info = {.sType =
                                         VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
                                     .flags = VK_FENCE_CREATE_SIGNALED_BIT};
     VkSemaphoreCreateInfo semaphore_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     for (auto i = 0; i < swapchain.image_count; i++) {
+        if (vkCreateSemaphore(device.device, &semaphore_info, nullptr,
+                              &wait_semaphores[i]) != VK_SUCCESS) {
+            return -1;
+        }
+    }
+    for (auto i = 0; i < swapchain.image_count * 2; i++) {
         if (vkCreateFence(device.device, &fence_info, nullptr,
                           &signal_fences[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device.device, &semaphore_info, nullptr,
-                              &wait_semaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(device.device, &semaphore_info, nullptr,
                               &signal_semaphores[i]) != VK_SUCCESS) {
             return -1;
@@ -531,17 +545,23 @@ std::optional<int> imgui_initialize(
     vkResetCommandBuffer(command_buffer,
                          VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
     ImGui_ImplVulkan_DestroyFontUploadObjects();
+    vkDeviceWaitIdle(device.device);
     return {};
 }
 
-std::optional<int> queue_submit(
-    const vkb::Device &device, const VkQueue &queue,
-    const vkb::Swapchain &swapchain, const std::vector<VkFence> &signal_fences,
+std::optional<int> frame_submit(
+    const vkb::Device &device, const VkQueue &graphics_queue,
+    const VkQueue &compute_queue, const vkb::Swapchain &swapchain,
+    const std::vector<VkFence> &signal_fences,
     const std::vector<VkSemaphore> &wait_semaphores,
     const std::vector<VkSemaphore> &signal_semaphores,
-    const std::vector<VkCommandBuffer> &command_buffers, uint32_t &index,
+    const std::vector<VkCommandBuffer> &graphics_command_buffers,
+    const std::vector<VkCommandBuffer> &compute_command_buffers,
+    uint32_t &index,
     std::function<std::optional<int>(const uint32_t &, const VkCommandBuffer &)>
-        commands) {
+        graphics_commands,
+    std::function<std::optional<int>(const uint32_t &, const VkCommandBuffer &)>
+        compute_commands) {
     uint32_t image_index;
     VkResult result =
         vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
@@ -553,55 +573,92 @@ std::optional<int> queue_submit(
     } else if (result != VK_SUCCESS) {
         return -1;
     }
-    if (vkWaitForFences(device.device, 1, &signal_fences[image_index], VK_TRUE,
-                        UINT64_MAX) != VK_SUCCESS) {
+    if (vkWaitForFences(device.device, 2, &signal_fences[image_index * 2],
+                        VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
         return -1;
     }
-    if (vkResetFences(device.device, 1, &signal_fences[image_index]) !=
+    if (vkResetFences(device.device, 2, &signal_fences[image_index * 2]) !=
         VK_SUCCESS) {
         return -1;
     }
-    if (vkResetCommandBuffer(command_buffers[image_index],
+    if (vkResetCommandBuffer(graphics_command_buffers[image_index],
                              VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT) !=
         VK_SUCCESS) {
         return -1;
     }
-    VkCommandBufferBeginInfo begin_info = {
+    VkCommandBufferBeginInfo graphics_begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-    if (vkBeginCommandBuffer(command_buffers[image_index], &begin_info) !=
+    if (vkBeginCommandBuffer(graphics_command_buffers[image_index],
+                             &graphics_begin_info) != VK_SUCCESS) {
+        return -1;
+    }
+    if (auto error = graphics_commands(image_index,
+                                       graphics_command_buffers[image_index])) {
+        return -1;
+    }
+    if (vkEndCommandBuffer(graphics_command_buffers[image_index]) !=
         VK_SUCCESS) {
         return -1;
     }
-    if (auto error = commands(image_index, command_buffers[image_index])) {
-        return -1;
-    }
-    if (vkEndCommandBuffer(command_buffers[image_index]) != VK_SUCCESS) {
-        return -1;
-    }
-    VkPipelineStageFlags wait_stages[] = {
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSubmitInfo submit_info = {
+    VkPipelineStageFlags graphics_wait_stages[] = {
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+    VkSubmitInfo graphics_submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &wait_semaphores[index],
-        .pWaitDstStageMask = wait_stages,
+        .pWaitDstStageMask = graphics_wait_stages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &command_buffers[image_index],
+        .pCommandBuffers = &graphics_command_buffers[image_index],
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &signal_semaphores[image_index]};
-    if (vkQueueSubmit(queue, 1, &submit_info, signal_fences[image_index]) !=
+        .pSignalSemaphores = &signal_semaphores[image_index * 2 + 0]};
+    if (vkQueueSubmit(graphics_queue, 1, &graphics_submit_info,
+                      signal_fences[image_index * 2 + 0]) != VK_SUCCESS) {
+        return -1;
+    }
+    if (vkResetCommandBuffer(compute_command_buffers[image_index],
+                             VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT) !=
         VK_SUCCESS) {
+        return -1;
+    }
+    VkCommandBufferBeginInfo compute_begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    if (vkBeginCommandBuffer(compute_command_buffers[image_index],
+                             &compute_begin_info) != VK_SUCCESS) {
+        return -1;
+    }
+    if (auto error = compute_commands(image_index,
+                                      compute_command_buffers[image_index])) {
+        return -1;
+    }
+    if (vkEndCommandBuffer(compute_command_buffers[image_index]) !=
+        VK_SUCCESS) {
+        return -1;
+    }
+    VkPipelineStageFlags compute_wait_stages[] = {
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+    VkSubmitInfo compute_submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &signal_semaphores[image_index * 2 + 0],
+        .pWaitDstStageMask = compute_wait_stages,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &compute_command_buffers[image_index],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &signal_semaphores[image_index * 2 + 1]};
+    if (vkQueueSubmit(compute_queue, 1, &compute_submit_info,
+                      signal_fences[image_index * 2 + 1]) != VK_SUCCESS) {
         return -1;
     }
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &signal_semaphores[image_index],
+        .pWaitSemaphores = &signal_semaphores[image_index * 2 + 1],
         .swapchainCount = 1,
         .pSwapchains = &swapchain.swapchain,
         .pImageIndices = &image_index};
-    result = vkQueuePresentKHR(queue, &present_info);
+    result = vkQueuePresentKHR(graphics_queue, &present_info);
     index = image_index;
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         return 0;
