@@ -108,6 +108,12 @@ set(
 
 add_library(vk-zero STATIC ${VK_ZERO_SOURCES})
 
+file(GLOB kernel-header-files "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/*.h")
+foreach(kernel-header ${kernel-header-files})
+  get_filename_component(kernel-header ${kernel-header} NAME)
+  list(APPEND kernel-headers "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel-header}")
+endforeach()
+list(APPEND kernel-headers "${CMAKE_CURRENT_SOURCE_DIR}/src/lib.h")
 file(GLOB kernels "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/*.hpp")
 foreach(kernel ${kernels})
   get_filename_component(kernel ${kernel} NAME)
@@ -171,7 +177,7 @@ foreach(kernel ${kernels})
     COMMAND ${CMAKE_COMMAND} -E rm -f
                              "${CMAKE_CURRENT_SOURCE_DIR}/src/${kernel}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}" ${kernel-headers}
     VERBATIM
     COMMAND_EXPAND_LISTS
   )
@@ -179,7 +185,7 @@ foreach(kernel ${kernels})
 endforeach()
 add_custom_target(
   clspv-target ALL
-  DEPENDS ${clspv-kernels}
+  DEPENDS ${clspv-kernels} ${kernel-headers}
 )
 
 target_include_directories(vk-zero PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
