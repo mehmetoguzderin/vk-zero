@@ -14,18 +14,6 @@ struct MainConstants {
 
 #ifdef VK_ZERO_CPU
 
-#include <chrono>
-#include <cstdio>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <string>
-#include <thread>
-#include <tuple>
-#include <vector>
-
 std::optional<int> initialize() {
     if (auto result = volkInitialize(); result != VK_SUCCESS) {
         return -1;

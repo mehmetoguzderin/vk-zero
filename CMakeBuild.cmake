@@ -67,7 +67,8 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/syoyo/tinygltf
   GIT_TAG        master 
 )
-set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+set(tinygltf_TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+add_definitions(-DTINYGLTF_BUILD_LOADER_EXAMPLE=OFF)
 FetchContent_MakeAvailable(tinygltf)
 
 FetchContent_Declare(
@@ -104,6 +105,7 @@ set(
   ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.h
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lib.cpp
 )
 
 add_library(vk-zero STATIC ${VK_ZERO_SOURCES})

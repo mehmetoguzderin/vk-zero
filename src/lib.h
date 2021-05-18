@@ -3,9 +3,23 @@
 
 #ifdef VK_ZERO_CPU
 
+#include <chrono>
+#include <cstdio>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <vector>
+
 #include "volk.h"
 
+#ifdef VK_ZERO_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
+#endif
 #include "vk_mem_alloc.h"
 
 #include "VkBootstrap.h"
@@ -17,9 +31,11 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
 
+#ifdef VK_ZERO_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#endif
 #include "tiny_gltf.h"
 
 #include "glm/glm.hpp"
@@ -35,7 +51,7 @@ using namespace glm;
 #define __global
 #define __constant const
 
-uint32_t GLOBAL_ID[3]{0, 0, 0};
+inline static uint32_t GLOBAL_ID[3]{0, 0, 0};
 
 inline uint32_t get_global_id(uint32_t dimindx) { return GLOBAL_ID[dimindx]; }
 
