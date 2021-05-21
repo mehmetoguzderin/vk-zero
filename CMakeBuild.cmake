@@ -13,11 +13,11 @@ add_compile_definitions(VMA_VULKAN_VERSION=1001000)
 include(FetchContent)
 
 FetchContent_Declare(
-  SDL2
-  GIT_REPOSITORY https://github.com/libsdl-org/SDL
-  GIT_TAG        main
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw
+  GIT_TAG        master
 )
-FetchContent_MakeAvailable(SDL2)
+FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
   Vulkan-Headers
@@ -110,8 +110,8 @@ set(
   ${imgui_SOURCE_DIR}/imgui_draw.cpp
   ${imgui_SOURCE_DIR}/imgui_tables.cpp
   ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
-  ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.h
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
   ${CMAKE_CURRENT_SOURCE_DIR}/src/lib.cpp
@@ -202,8 +202,7 @@ add_custom_target(
 target_include_directories(vk-zero PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_include_directories(vk-zero PUBLIC ${tinygltf_SOURCE_DIR})
 target_include_directories(vk-zero PUBLIC ${vma_SOURCE_DIR}/include)
-target_link_libraries(vk-zero PUBLIC SDL2-static)
-target_link_libraries(vk-zero PUBLIC SDL2main)
+target_link_libraries(vk-zero PUBLIC glfw)
 target_link_libraries(vk-zero PUBLIC Vulkan-Headers)
 target_link_libraries(vk-zero PUBLIC vk-bootstrap)
 # link_libraries(clspv)

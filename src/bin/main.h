@@ -18,33 +18,31 @@ std::optional<int> initialize() {
     if (auto result = volkInitialize(); result != VK_SUCCESS) {
         return -1;
     }
-    if (auto result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS |
-                               SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
-        result < 0) {
+    if (auto result = glfwInit(); !result) {
+        return -1;
+    }
+    if (!glfwVulkanSupported()) {
         return -1;
     }
     return {};
 }
 
 std::optional<int> create_window_instance_surface(const char *&name,
-                                                  SDL_Window *&window,
+                                                  GLFWwindow *&window,
                                                   vkb::Instance &instance,
                                                   VkSurfaceKHR &surface) {
-    window = SDL_CreateWindow(
-        name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 512,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    window = glfwCreateWindow(512, 512, name, nullptr, nullptr);
     if (!window) {
         return -1;
     }
-    SDL_SetWindowMinimumSize(window, 16, 16);
+    glfwSetWindowSizeLimits(window, 16, 16, GLFW_DONT_CARE, GLFW_DONT_CARE);
     uint32_t extensions_count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count, nullptr);
-    std::vector<const char *> extensions{extensions_count};
-    SDL_Vulkan_GetInstanceExtensions(window, &extensions_count,
-                                     extensions.data());
+    const char **extensions =
+        glfwGetRequiredInstanceExtensions(&extensions_count);
     vkb::InstanceBuilder instance_builder{};
-    for (auto &extension : extensions) {
-        instance_builder.enable_extension(extension);
+    for (auto i = 0; i < extensions_count; ++i) {
+        instance_builder.enable_extension(extensions[i]);
     }
 #if !(NDEBUG)
     instance_builder.request_validation_layers();
@@ -59,9 +57,10 @@ std::optional<int> create_window_instance_surface(const char *&name,
         instance = result.value();
     }
     volkLoadInstance(instance.instance);
-    if (auto result =
-            SDL_Vulkan_CreateSurface(window, instance.instance, &surface);
-        !result) {
+    if (auto result = glfwCreateWindowSurface(instance.instance, window,
+                                              nullptr, &surface);
+        result != VK_SUCCESS) {
+        std::cout << "...";
         return -1;
     }
     return {};
@@ -473,7 +472,7 @@ allocate_descriptor_sets(const vkb::Device &device,
 }
 
 std::optional<int> allocate_command_buffers(
-    SDL_Window *&window, const vkb::Device &device, const uint32_t &queue_index,
+    GLFWwindow *&window, const vkb::Device &device, const uint32_t &queue_index,
     const VkCommandPool &command_pool, const vkb::Swapchain &swapchain,
     std::vector<VkCommandBuffer> &command_buffers) {
     command_buffers = std::vector<VkCommandBuffer>{swapchain.image_count};
@@ -490,7 +489,7 @@ std::optional<int> allocate_command_buffers(
 }
 
 std::optional<int> imgui_initialize(
-    SDL_Window *&window, vkb::Instance &instance,
+    GLFWwindow *&window, vkb::Instance &instance,
     const vkb::PhysicalDevice &physical_device, const vkb::Device &device,
     const VkQueue &queue, const uint32_t &queue_index,
     const VkDescriptorPool &descriptor_pool, const vkb::Swapchain &swapchain,
@@ -499,7 +498,7 @@ std::optional<int> imgui_initialize(
     ImGui::CreateContext();
     imgui_io = ImGui::GetIO();
     ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForVulkan(window);
+    ImGui_ImplGlfw_InitForVulkan(window, false);
     ImGui_ImplVulkan_LoadFunctions(
         [](const char *function_name, void *instance) {
             return vkGetInstanceProcAddr(*static_cast<VkInstance *>(instance),

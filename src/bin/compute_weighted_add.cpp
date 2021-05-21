@@ -5,7 +5,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     auto create_name = "compute_weighted_add";
-    SDL_Window *window;
+    GLFWwindow *window;
     vkb::Instance instance;
     VkSurfaceKHR surface;
     if (auto error = create_window_instance_surface(create_name, window,
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, nullptr);
     vkb::destroy_instance(instance);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    glfwDestroyWindow(window);
+    glfwTerminate();
     return 0;
 }

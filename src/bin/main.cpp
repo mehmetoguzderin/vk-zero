@@ -5,7 +5,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     auto create_name = "main";
-    SDL_Window *window;
+    GLFWwindow *window;
     vkb::Instance instance;
     VkSurfaceKHR surface;
     if (auto error = create_window_instance_surface(create_name, window,
@@ -110,8 +110,22 @@ int main(int argc, char *argv[]) {
     }
     uint32_t index = 0;
     uint32_t quit = 0;
-    SDL_Event event;
     bool show_demo_window = true;
+    static GLFWkeyfun key_function = [](GLFWwindow *window, int key,
+                                        int scancode, int action, int mods) {
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+    };
+    glfwSetKeyCallback(window, key_function);
+    uint32_t resize = 0;
+    glfwSetWindowUserPointer(window, &resize);
+    static GLFWframebuffersizefun size_function = [](GLFWwindow *window,
+                                                     int width, int height) {
+        auto resize = static_cast<uint32_t *>(glfwGetWindowUserPointer(window));
+        *resize = 1;
+    };
+    glfwSetFramebufferSizeCallback(window, size_function);
     auto reset = [&]() -> std::optional<int> {
         vkDeviceWaitIdle(device.device);
         vkFreeCommandBuffers(device.device, compute_command_pool,
@@ -148,37 +162,18 @@ int main(int argc, char *argv[]) {
         index = 0;
         return {};
     };
-    while (!quit) {
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            switch (event.type) {
-            case SDL_KEYUP:
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                    quit = 1;
-                break;
-
-            case SDL_QUIT:
-                quit = 1;
-                break;
-            case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                    event.window.windowID == SDL_GetWindowID(window))
-                    quit = 1;
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    if (auto error = reset()) {
-                        return -1;
-                    }
-                }
-                break;
-
-            default:
-                break;
+    while (!quit && !glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        if (resize) {
+            if (auto error = reset()) {
+                return -1;
             }
+            resize = 0;
         }
         int width, height;
-        SDL_Vulkan_GetDrawableSize(window, &width, &height);
+        glfwGetFramebufferSize(window, &width, &height);
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL2_NewFrame(window);
+        ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -292,7 +287,7 @@ int main(int argc, char *argv[]) {
     }
     vkDeviceWaitIdle(device.device);
     ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     vkFreeCommandBuffers(device.device, compute_command_pool,
                          compute_command_buffers.size(),
@@ -329,7 +324,7 @@ int main(int argc, char *argv[]) {
     vkb::destroy_device(device);
     vkDestroySurfaceKHR(instance.instance, surface, nullptr);
     vkb::destroy_instance(instance);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    glfwDestroyWindow(window);
+    glfwTerminate();
     return 0;
 }
