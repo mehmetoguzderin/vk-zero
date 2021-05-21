@@ -1,10 +1,6 @@
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}>)
 
-if(APPLE)
-  set(CMAKE_CXX_FLAGS "-Wno-nullability-completeness")
-endif()
-
 add_compile_definitions(VK_ZERO_CPU)
 add_compile_definitions(VK_NO_PROTOTYPES)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
@@ -203,6 +199,18 @@ add_custom_target(
 target_include_directories(vk-zero PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_include_directories(vk-zero PUBLIC ${tinygltf_SOURCE_DIR})
 target_include_directories(vk-zero PUBLIC ${vma_SOURCE_DIR}/include)
+
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "-Wno-nullability-completeness")
+  if(IOS OR TVOS)
+    find_library(METAL Metal)
+    list(APPEND METAL_LIBS ${METAL})
+  else()
+    list(APPEND METAL_FLAGS "-Wl,-weak_framework,Metal")
+  endif()
+  target_link_libraries(vk-zero PUBLIC ${METAL_LIBS} ${METAL_FLAGS})
+endif()
+
 target_link_libraries(vk-zero PUBLIC glfw)
 target_link_libraries(vk-zero PUBLIC Vulkan-Headers)
 target_link_libraries(vk-zero PUBLIC vk-bootstrap)
