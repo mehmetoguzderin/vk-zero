@@ -1,5 +1,9 @@
 set(CMAKE_CXX_STANDARD 20)
 
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "-Wno-nullability-completeness")
+endif()
+
 add_compile_definitions(VK_ZERO_CPU)
 add_compile_definitions(VK_NO_PROTOTYPES)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
@@ -65,11 +69,16 @@ FetchContent_MakeAvailable(imgui)
 FetchContent_Declare(
   tinygltf
   GIT_REPOSITORY https://github.com/syoyo/tinygltf
-  GIT_TAG        master 
+  GIT_TAG        master
 )
-set(tinygltf_TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
-add_definitions(-DTINYGLTF_BUILD_LOADER_EXAMPLE=OFF)
-FetchContent_MakeAvailable(tinygltf)
+FetchContent_GetProperties(tinygltf)
+if(NOT tinygltf_POPULATED)
+  set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+  set(tinygltf_TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+  add_definitions(-DTINYGLTF_BUILD_LOADER_EXAMPLE=OFF)
+  FetchContent_Populate(tinygltf)
+  add_subdirectory(${tinygltf_SOURCE_DIR} ${tinygltf_BINARY_DIR})
+endif()
 
 FetchContent_Declare(
   vma
