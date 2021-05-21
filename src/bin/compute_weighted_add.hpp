@@ -16,10 +16,12 @@ compute_weighted_add_kernel(__global ComputeWeightedAddElement *a,
                             __global ComputeWeightedAddElement *c,
                             __global ComputeWeightedAddElement *d,
                             __constant ComputeWeightedAddConstants *constants) {
-    uint64_t length = (uint64_t)constants->length.x * (uint64_t)ELEMENT_WIDTH +
-                      (uint64_t)constants->length.y;
-    uint64_t i = (uint64_t)get_global_id(0) * (uint64_t)get_local_size(1) +
-                 (uint64_t)get_local_id(1);
+    uint64_t length = static_cast<uint64_t>(constants->length.x) *
+                          static_cast<uint64_t>(ELEMENT_WIDTH) +
+                      static_cast<uint64_t>(constants->length.y);
+    uint64_t i = static_cast<uint64_t>(get_global_id(0)) *
+                     static_cast<uint64_t>(get_local_size(1)) +
+                 static_cast<uint64_t>(get_local_id(1));
     if (i >= length)
         return;
     uint64_t x = i / ELEMENT_WIDTH;
