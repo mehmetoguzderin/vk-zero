@@ -12,6 +12,7 @@
 
 - [CMake](https://cmake.org)
   - On Windows, recent Visual Studio versions [can open CMake projects directly](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio), which you can use instead.
+  - On macOS, only generating with Ninja is tested.
 - [Clang](https://clang.llvm.org)
   - On Windows, recent Visual Studio versions [can install Clang](https://docs.microsoft.com/en-us/cpp/build/clang-support-msbuild), which you can use instead.
 - [Clspv](https://github.com/google/clspv)
