@@ -2,18 +2,7 @@
 #define VK_ZERO_LIB_H
 
 #ifdef VK_ZERO_CPU
-
-#include <chrono>
-#include <cstdio>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <string>
-#include <thread>
-#include <tuple>
-#include <vector>
+#define VK_ZERO_IMPLEMENTATION
 
 #include "volk.h"
 

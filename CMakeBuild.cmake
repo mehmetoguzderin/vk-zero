@@ -111,7 +111,6 @@ set(
   ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
   ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/lib.cpp
 )
 
 add_library(vk-zero STATIC ${VK_ZERO_SOURCES})
