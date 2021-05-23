@@ -1,4 +1,5 @@
-﻿#include "main.h"
+﻿#define VK_ZERO_IMPLEMENTATION
+#include "main.h"
 
 int main(int argc, char *argv[]) {
     if (auto error = initialize()) {

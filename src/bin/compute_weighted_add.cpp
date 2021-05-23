@@ -1,3 +1,4 @@
+#define VK_ZERO_IMPLEMENTATION
 #include "compute_weighted_add.h"
 
 int main(int argc, char *argv[]) {

@@ -2,7 +2,6 @@
 #define VK_ZERO_LIB_H
 
 #ifdef VK_ZERO_CPU
-#define VK_ZERO_IMPLEMENTATION
 
 #include "volk.h"
 
