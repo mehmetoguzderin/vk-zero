@@ -3,6 +3,12 @@
 
 #ifdef VK_ZERO_CPU
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#ifdef VK_ZERO_IMPLEMENTATION
+#define VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+#endif
+#include "vulkan/vulkan.hpp"
+
 #include "volk.h"
 
 #ifdef VK_ZERO_IMPLEMENTATION
