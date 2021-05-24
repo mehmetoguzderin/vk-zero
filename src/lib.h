@@ -75,8 +75,8 @@ struct VkZeroDevice {
 };
 
 inline VkZeroInstance
-createInstance(const uint32_t enabledExtensionCount,
-               const char *const *ppEnabledExtensionNames) {
+createInstance(const uint32_t &enabledExtensionCount,
+               const char *const *&ppEnabledExtensionNames) {
     vk::ApplicationInfo applicationInfo{
         .apiVersion = VK_API_VERSION_1_1,
     };
@@ -94,8 +94,8 @@ createInstance(const uint32_t enabledExtensionCount,
 
 inline VkZeroDevice
 createDevice(const VkZeroInstance &instance,
-             const vk::PhysicalDeviceFeatures *pEnabledFeatures,
-             std::vector<vk::DescriptorPoolSize> poolSizes) {
+             const vk::PhysicalDeviceFeatures *&pEnabledFeatures,
+             std::vector<vk::DescriptorPoolSize> &poolSizes) {
     const auto physicalDeviceIndex = 0;
     if (instance.physicalDevices.size() < physicalDeviceIndex + 1) {
         throw static_cast<int32_t>(-1);
