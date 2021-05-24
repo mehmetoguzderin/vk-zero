@@ -45,7 +45,9 @@ using namespace glm;
 #define __global
 #define __constant const
 
-inline static uint32_t GLOBAL_ID[3]{0, 0, 0};
+#ifdef VK_ZERO_IMPLEMENTATION
+static uint32_t GLOBAL_ID[3]{0, 0, 0};
+#endif
 
 inline uint32_t get_global_id(uint32_t dimindx) { return GLOBAL_ID[dimindx]; }
 
