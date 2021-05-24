@@ -109,7 +109,7 @@ createDevice(const VkZeroInstance &instance,
              std::vector<vk::DescriptorPoolSize> &poolSizes) {
     const auto physicalDeviceIndex = 0;
     if (instance.physicalDevices.size() < physicalDeviceIndex + 1) {
-        throw static_cast<int32_t>(-1);
+        throw -1;
     }
     const auto queueFamilyIndex = 0;
     const auto queueIndex = 0;
