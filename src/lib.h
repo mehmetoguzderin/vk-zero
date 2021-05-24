@@ -76,7 +76,7 @@ struct VkZeroDevice {
     VkZeroQueue queue;
 };
 
-inline void initialize() {
+inline void createSystem() {
     if (!glfwInit()) {
         throw -1;
     }
@@ -200,17 +200,36 @@ createDevice(const VkZeroInstance &instance,
 
 #endif
 
-struct Pcg32Random {
+struct Pcg32 {
     uint64_t state;
     uint64_t inc;
 };
 
-inline uint32_t Pcg32(Pcg32Random *&rng) {
-    auto oldState = rng->state;
-    rng->state = oldState * 6364136223846793005ULL + (rng->inc | 1);
+inline Pcg32 Pcg32Seed(uint64_t state, uint64_t sequence) {
+    Pcg32 rng;
+    rng.state = 0U;
+    rng.inc = (sequence << 1u) | 1u;
+    rng.state = rng.state * 6364136223846793005ULL + rng.inc;
+    rng.state += state;
+    rng.state = rng.state * 6364136223846793005ULL + rng.inc;
+    return rng;
+}
+
+inline uint32_t Pcg32Integer(Pcg32 &rng) {
+    auto oldState = rng.state;
+    rng.state = oldState * 6364136223846793005ULL + (rng.inc | 1);
     uint32_t xorShifted = ((oldState >> 18u) ^ oldState) >> 27u;
     uint32_t rot = oldState >> 59u;
     return (xorShifted >> rot) | (xorShifted << ((-rot) & 31));
+}
+
+inline float Pcg32Float(Pcg32 &rng) {
+    union {
+        uint32_t integer_type;
+        float float_type;
+    } value;
+    value.integer_type = (Pcg32Integer(rng) >> 9) | 0x3f800000u;
+    return value.float_type - 1.0f;
 }
 
 #endif
