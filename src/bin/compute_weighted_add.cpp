@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     uint3 local_size = uvec3(16, 32, 1);
-    auto module_name = "compute_weighted_add.hpp";
+    auto module_name = "compute_weighted_add.hpp.spv";
     VkShaderModule shader_module;
     if (auto error = create_shader_module(device, module_name, shader_module)) {
         return -1;

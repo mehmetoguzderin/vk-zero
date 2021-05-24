@@ -136,7 +136,7 @@ foreach(kernel ${kernels})
               --inline-entry-points
               --uniform-workgroup-size
               --constant-args-ubo
-              -o "${kernel}"
+              -o "${kernel}.spv"
               "bin/${kernel}"
       )
     else()
@@ -151,7 +151,7 @@ foreach(kernel ${kernels})
               --inline-entry-points
               --uniform-workgroup-size
               --constant-args-ubo
-              -o "${kernel}"
+              -o "${kernel}.spv"
               "bin/${kernel}"
       )
     endif()
@@ -165,30 +165,30 @@ foreach(kernel ${kernels})
             --inline-entry-points
             --uniform-workgroup-size
             --constant-args-ubo
-            -o "${kernel}"
+            -o "${kernel}.spv"
             "bin/${kernel}"
     )
   endif()
   add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/${kernel}"
+    OUTPUT "${CMAKE_BINARY_DIR}/${kernel}.spv"
     COMMAND ${CMAKE_COMMAND} -E rm -f
-                             "${CMAKE_BINARY_DIR}/${kernel}"
+                             "${CMAKE_BINARY_DIR}/${kernel}.spv"
     COMMAND ${CLSPV_COMMAND}
     COMMAND spirv-opt --strip-reflect
                       -O
-                      -o "${kernel}"
-                      "${kernel}"
+                      -o "${kernel}.spv"
+                      "${kernel}.spv"
     COMMAND ${CMAKE_COMMAND} -E copy
-                             "${kernel}"
-                             "${CMAKE_BINARY_DIR}/${kernel}"
+                             "${kernel}.spv"
+                             "${CMAKE_BINARY_DIR}/${kernel}.spv"
     COMMAND ${CMAKE_COMMAND} -E rm -f
-                             "${CMAKE_CURRENT_SOURCE_DIR}/src/${kernel}"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/src/${kernel}.spv"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/bin/${kernel}" ${kernel-headers}
     VERBATIM
     COMMAND_EXPAND_LISTS
   )
-  list(APPEND clspv-kernels "${CMAKE_BINARY_DIR}/${kernel}")
+  list(APPEND clspv-kernels "${CMAKE_BINARY_DIR}/${kernel}.spv")
 endforeach()
 add_custom_target(
   clspv-target ALL

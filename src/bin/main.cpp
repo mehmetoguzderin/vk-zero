@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     uint3 local_size = uvec3(16, 16, 1);
-    auto module_name = "main.hpp";
+    auto module_name = "main.hpp.spv";
     VkShaderModule shader_module;
     if (auto error = create_shader_module(device, module_name, shader_module)) {
         return -1;
