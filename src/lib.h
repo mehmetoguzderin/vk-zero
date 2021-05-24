@@ -76,6 +76,15 @@ struct VkZeroDevice {
     VkZeroQueue queue;
 };
 
+inline void initialize() {
+    if (!glfwInit()) {
+        throw -1;
+    }
+    if (!glfwVulkanSupported()) {
+        throw -1;
+    }
+}
+
 inline VkZeroInstance
 createInstance(const uint32_t &enabledExtensionCount,
                const char *const *&ppEnabledExtensionNames) {
@@ -196,7 +205,7 @@ typedef struct {
     uint64_t inc;
 } pcg32_random_t;
 
-uint32_t pcg32_random_r(pcg32_random_t *&rng) {
+inline uint32_t pcg32_random_r(pcg32_random_t *&rng) {
     auto oldstate = rng->state;
     rng->state = oldstate * 6364136223846793005ULL + (rng->inc | 1);
     uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
