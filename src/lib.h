@@ -3,11 +3,12 @@
 
 #ifdef VK_ZERO_CPU
 
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#ifdef VK_ZERO_IMPLEMENTATION
-#define VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
-#endif
 #include "vulkan/vulkan.hpp"
+#ifdef VK_ZERO_IMPLEMENTATION
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+#endif
 
 #include "volk.h"
 
@@ -50,6 +51,35 @@ static uint32_t GLOBAL_ID[3]{0, 0, 0};
 #endif
 
 inline uint32_t get_global_id(uint32_t dimindx) { return GLOBAL_ID[dimindx]; }
+
+struct VkZeroDevice {
+    vk::PhysicalDevice physicalDevice;
+    vk::Device device;
+    vk::PhysicalDeviceProperties properties;
+    vk::PhysicalDeviceFeatures features;
+    std::vector<vk::QueueFamilyProperties> queueFamilyProperties;
+};
+
+struct VkZeroQueue {
+    vk::Queue queue;
+    uint32_t familyIndex;
+    uint32_t index;
+};
+
+VkZeroQueue getGraphicsComputeTransferQueue(const VkZeroDevice &device) {
+    if (device.queueFamilyProperties.size() < 1) {
+        throw static_cast<int32_t>(-1);
+    }
+    const auto &familyProperties = device.queueFamilyProperties[0];
+    const auto queueFlags = vk::QueueFlagBits::eGraphics |
+                            vk::QueueFlagBits::eCompute |
+                            vk::QueueFlagBits::eTransfer;
+    if ((familyProperties.queueFlags & queueFlags) != queueFlags) {
+        throw static_cast<int32_t>(-1);
+    }
+    return VkZeroQueue{
+        .queue = device.device.getQueue(0, 0), .familyIndex = 0, .index = 0};
+}
 
 #else
 
