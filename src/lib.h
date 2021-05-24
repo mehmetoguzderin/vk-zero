@@ -147,7 +147,7 @@ createDevice(const VkZeroInstance &instance,
         .descriptorPool =
             device.createDescriptorPool(vk::DescriptorPoolCreateInfo{
                 .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-                .maxSets = 8192,
+                .maxSets = 65536,
                 .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
                 .pPoolSizes = poolSizes.data(),
             }),
