@@ -3,9 +3,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}>)
 
 add_compile_definitions(VK_ZERO_CPU)
 add_compile_definitions(VK_NO_PROTOTYPES)
+add_compile_definitions(VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
+add_compile_definitions(VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
-add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
-add_compile_definitions(VMA_VULKAN_VERSION=1001000)
+add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=0)
+add_compile_definitions(VMA_VULKAN_VERSION=1000000)
+add_compile_definitions(IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
 include(FetchContent)
 
@@ -23,12 +26,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Vulkan-Headers)
 
-FetchContent_Declare(
-  vk-bootstrap
-  GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-  GIT_TAG        master
-)
-FetchContent_MakeAvailable(vk-bootstrap)
+# FetchContent_Declare(
+#   vk-bootstrap
+#   GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
+#   GIT_TAG        master
+# )
+# FetchContent_MakeAvailable(vk-bootstrap)
 
 # FetchContent_Declare(
 #   clspv
@@ -55,12 +58,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+add_definitions(-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui
   GIT_TAG        master
 )
-add_definitions(-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 FetchContent_MakeAvailable(imgui)
 
 FetchContent_Declare(
@@ -83,20 +86,6 @@ FetchContent_Declare(
   GIT_TAG        master
 )
 FetchContent_MakeAvailable(vma)
-
-FetchContent_Declare(
-  volk
-  GIT_REPOSITORY https://github.com/zeux/volk
-  GIT_TAG        master
-)
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-  set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_XLIB_KHR)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-  set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
-endif()
-FetchContent_MakeAvailable(volk)
 
 set(
   VK_ZERO_SOURCES
@@ -212,10 +201,9 @@ endif()
 
 target_link_libraries(vk-zero PUBLIC glfw)
 target_link_libraries(vk-zero PUBLIC Vulkan-Headers)
-target_link_libraries(vk-zero PUBLIC vk-bootstrap)
+# target_link_libraries(vk-zero PUBLIC vk-bootstrap)
 # link_libraries(clspv)
 target_link_libraries(vk-zero PUBLIC glm)
-target_link_libraries(vk-zero PUBLIC volk)
 
 link_libraries(vk-zero)
 add_dependencies(vk-zero clspv-target)

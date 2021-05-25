@@ -5,21 +5,15 @@
 
 #include <vector>
 
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 #ifdef VK_ZERO_IMPLEMENTATION
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #endif
 
-#include "volk.h"
-
 #ifdef VK_ZERO_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
 #endif
 #include "vk_mem_alloc.h"
-
-#include "VkBootstrap.h"
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
@@ -58,6 +52,13 @@ struct VkZeroInstance {
     vk::Instance instance;
     std::vector<vk::PhysicalDevice> physicalDevices;
     std::vector<vk::PhysicalDeviceGroupProperties> physicalDeviceGroups;
+
+    inline void destroy() const { instance.destroy(); }
+};
+
+struct VkZeroPhysicalDeviceFeatures {
+    vk::PhysicalDeviceFeatures features;
+    vk::PhysicalDeviceVulkan11Features features11;
 };
 
 struct VkZeroQueue {
@@ -74,28 +75,31 @@ struct VkZeroDevice {
     VmaAllocator allocator;
     vk::DescriptorPool descriptorPool;
     VkZeroQueue queue;
+
+    inline void destroy() const {
+        device.destroyCommandPool(queue.commandPool);
+        device.destroyDescriptorPool(descriptorPool);
+        vmaDestroyAllocator(allocator);
+        device.destroy();
+    }
 };
 
-inline void createSystem() {
-    if (!glfwInit()) {
-        throw -1;
-    }
-    if (!glfwVulkanSupported()) {
-        throw -1;
-    }
-}
-
 inline VkZeroInstance
-createInstance(const uint32_t &enabledExtensionCount,
-               const char *const *&ppEnabledExtensionNames) {
+createInstance(const std::vector<const char *> &enabledExtensions) {
+    vk::DynamicLoader dl;
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
+        dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
     vk::ApplicationInfo applicationInfo{
         .apiVersion = VK_API_VERSION_1_1,
     };
     auto instance = vk::createInstance(vk::InstanceCreateInfo{
         .pApplicationInfo = &applicationInfo,
-        .enabledExtensionCount = enabledExtensionCount,
-        .ppEnabledExtensionNames = ppEnabledExtensionNames,
+        .enabledExtensionCount =
+            static_cast<uint32_t>(enabledExtensions.size()),
+        .ppEnabledExtensionNames = enabledExtensions.data(),
     });
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
     return VkZeroInstance{
         .instance = instance,
         .physicalDevices = instance.enumeratePhysicalDevices(),
@@ -105,8 +109,8 @@ createInstance(const uint32_t &enabledExtensionCount,
 
 inline VkZeroDevice
 createDevice(const VkZeroInstance &instance,
-             const vk::PhysicalDeviceFeatures *&pEnabledFeatures,
-             std::vector<vk::DescriptorPoolSize> &poolSizes) {
+             const VkZeroPhysicalDeviceFeatures enabledFeatures,
+             const std::vector<vk::DescriptorPoolSize> poolSizes) {
     const auto physicalDeviceIndex = 0;
     if (instance.physicalDevices.size() < physicalDeviceIndex + 1) {
         throw -1;
@@ -120,10 +124,12 @@ createDevice(const VkZeroInstance &instance,
         .pQueuePriorities = &queuePriority};
     auto device = instance.physicalDevices[physicalDeviceIndex].createDevice(
         vk::DeviceCreateInfo{
+            .pNext = &enabledFeatures.features11,
             .queueCreateInfoCount = 1,
             .pQueueCreateInfos = &queueCreateInfo,
-            .pEnabledFeatures = pEnabledFeatures,
+            .pEnabledFeatures = &enabledFeatures.features,
         });
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
     if (instance.physicalDevices[physicalDeviceIndex]
             .getQueueFamilyProperties()
             .size() < queueFamilyIndex + 1) {
@@ -139,11 +145,39 @@ createDevice(const VkZeroInstance &instance,
         queueFamilyProperties.queueCount < queueIndex + 1) {
         throw -1;
     }
+#define VMA_FETCH_HPP(memberName)                                              \
+    .memberName = VULKAN_HPP_DEFAULT_DISPATCHER.memberName
+    VmaVulkanFunctions functions{
+        VMA_FETCH_HPP(vkGetPhysicalDeviceProperties),
+        VMA_FETCH_HPP(vkGetPhysicalDeviceMemoryProperties),
+        VMA_FETCH_HPP(vkAllocateMemory),
+        VMA_FETCH_HPP(vkFreeMemory),
+        VMA_FETCH_HPP(vkMapMemory),
+        VMA_FETCH_HPP(vkUnmapMemory),
+        VMA_FETCH_HPP(vkFlushMappedMemoryRanges),
+        VMA_FETCH_HPP(vkInvalidateMappedMemoryRanges),
+        VMA_FETCH_HPP(vkBindBufferMemory),
+        VMA_FETCH_HPP(vkBindImageMemory),
+        VMA_FETCH_HPP(vkGetBufferMemoryRequirements),
+        VMA_FETCH_HPP(vkGetImageMemoryRequirements),
+        VMA_FETCH_HPP(vkCreateBuffer),
+        VMA_FETCH_HPP(vkDestroyBuffer),
+        VMA_FETCH_HPP(vkCreateImage),
+        VMA_FETCH_HPP(vkDestroyImage),
+        VMA_FETCH_HPP(vkCmdCopyBuffer),
+        VMA_FETCH_HPP(vkGetBufferMemoryRequirements2KHR),
+        VMA_FETCH_HPP(vkGetImageMemoryRequirements2KHR),
+        VMA_FETCH_HPP(vkBindBufferMemory2KHR),
+        VMA_FETCH_HPP(vkBindImageMemory2KHR),
+        VMA_FETCH_HPP(vkGetPhysicalDeviceMemoryProperties2KHR),
+    };
+#undef VMA_FETCH_HPP
     VmaAllocatorCreateInfo allocatorCreateInfo = {
         .physicalDevice = instance.physicalDevices[physicalDeviceIndex],
         .device = device,
+        .pVulkanFunctions = &functions,
         .instance = instance.instance,
-        .vulkanApiVersion = VK_API_VERSION_1_1,
+        .vulkanApiVersion = VK_API_VERSION_1_0,
     };
     VmaAllocator allocator;
     if (vmaCreateAllocator(&allocatorCreateInfo, &allocator) != VK_SUCCESS) {
@@ -174,6 +208,51 @@ createDevice(const VkZeroInstance &instance,
                     }),
             },
     };
+}
+
+inline GLFWwindow *createWindow(std::vector<const char *> &enabledExtensions,
+                                const uint32_t width, const uint32_t height) {
+    if (glfwInit() != GLFW_TRUE) {
+        throw -1;
+    }
+    if (glfwVulkanSupported() != GLFW_TRUE) {
+        throw -1;
+    }
+    if (!ImGui::CreateContext()) {
+        throw -1;
+    }
+    ImGui::StyleColorsDark();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    auto window = glfwCreateWindow(width, height, "", nullptr, nullptr);
+    if (!window) {
+        throw -1;
+    }
+    glfwSetWindowSizeLimits(window, 8, 8, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    uint32_t requiredInstanceExtensionsCount = 0;
+    const auto requiredInstanceExtensions =
+        glfwGetRequiredInstanceExtensions(&requiredInstanceExtensionsCount);
+    for (auto i = 0; i < requiredInstanceExtensionsCount; ++i) {
+        enabledExtensions.push_back(requiredInstanceExtensions[i]);
+    }
+    return window;
+}
+
+inline VkSurfaceKHR createSurface(GLFWwindow *&window,
+                                  const VkZeroInstance &instance) {
+    VkSurfaceKHR surface;
+    if (glfwCreateWindowSurface(instance.instance, window, nullptr, &surface) !=
+        VK_SUCCESS) {
+        throw -1;
+    }
+    ImGui_ImplGlfw_InitForVulkan(window, false);
+    VkInstance vkInstance = instance.instance;
+    ImGui_ImplVulkan_LoadFunctions(
+        [](const char *functionName, void *instance) {
+            return VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr(
+                *static_cast<VkInstance *>(instance), functionName);
+        },
+        static_cast<void *>(&vkInstance));
+    return surface;
 }
 
 #else
