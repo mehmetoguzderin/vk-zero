@@ -92,6 +92,7 @@ struct VkZeroBinding {
 struct VkZeroLayout {
     vk::DescriptorSetLayout descriptorSet;
     vk::PipelineLayout pipeline;
+
     inline void destroy(const VkZeroDevice &device) const {
         device.device.destroyPipelineLayout(pipeline);
         device.device.destroyDescriptorSetLayout(descriptorSet);
