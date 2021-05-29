@@ -236,6 +236,22 @@ inline void updateDescriptorSets(
     const VkZeroDevice &device, const std::vector<VkZeroBinding> &bindings,
     const std::vector<const std::vector<vk::DescriptorSet>> descriptorSets) {}
 
+inline vk::ShaderModule createShaderModule(const VkZeroDevice &device,
+                                           const std::string source) {
+    std::ifstream file(source, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        throw -1;
+    }
+    size_t file_size = (size_t)file.tellg();
+    std::vector<char> code(file_size);
+    file.seekg(0);
+    file.read(code.data(), static_cast<std::streamsize>(file_size));
+    return device.device.createShaderModule(vk::ShaderModuleCreateInfo{
+        .codeSize = code.size(),
+        .pCode = reinterpret_cast<const uint32_t *>(code.data()),
+    });
+}
+
 inline GLFWwindow *createWindow(std::vector<const char *> &enabledExtensions,
                                 const uint32_t width, const uint32_t height) {
     if (glfwInit() != GLFW_TRUE) {
