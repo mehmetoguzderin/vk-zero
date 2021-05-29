@@ -84,6 +84,20 @@ struct VkZeroDevice {
     }
 };
 
+struct VkZeroBinding {
+    vk::WriteDescriptorSet binding;
+    vk::ShaderStageFlags stageFlags;
+};
+
+struct VkZeroLayout {
+    vk::DescriptorSetLayout descriptorSet;
+    vk::PipelineLayout pipeline;
+    inline void destroy(const VkZeroDevice &device) const {
+        device.device.destroyPipelineLayout(pipeline);
+        device.device.destroyDescriptorSetLayout(descriptorSet);
+    }
+};
+
 inline VkZeroInstance
 createInstance(const std::vector<const char *> &enabledExtensions) {
     vk::DynamicLoader dl;
@@ -209,6 +223,17 @@ createDevice(const VkZeroInstance &instance,
             },
     };
 }
+
+inline VkZeroLayout
+createLayout(const VkZeroDevice &device,
+             const std::vector<VkZeroBinding> &bindings,
+             const std::vector<vk::PushConstantRange> pushConstantRanges) {
+    return {};
+}
+
+inline void updateDescriptorSets(
+    const VkZeroDevice &device, const std::vector<VkZeroBinding> &bindings,
+    const std::vector<const std::vector<vk::DescriptorSet>> descriptorSets) {}
 
 inline GLFWwindow *createWindow(std::vector<const char *> &enabledExtensions,
                                 const uint32_t width, const uint32_t height) {
