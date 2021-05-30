@@ -11,16 +11,19 @@
 
 #endif
 
+namespace compute {
+using Element = float4;
+constexpr uint64_t ELEMENT_SIZE = sizeof(Element);
 constexpr uint64_t ELEMENT_WIDTH = 2048;
-struct ComputeElements {
-    float4 element[ELEMENT_WIDTH];
+struct Elements {
+    Element element[ELEMENT_WIDTH];
 };
-constexpr uint64_t ELEMENT_SIZE = sizeof(float4);
 
-struct ComputeConstants {
+struct Constants {
     float4 weights;
     uint2 length;
 };
+} // namespace compute
 
 #ifdef VK_ZERO_CPU
 
