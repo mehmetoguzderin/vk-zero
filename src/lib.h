@@ -90,12 +90,14 @@ struct VkZeroBinding {
 };
 
 struct VkZeroLayout {
-    vk::DescriptorSetLayout descriptorSet;
+    std::vector<vk::DescriptorSetLayout> descriptorSets;
     vk::PipelineLayout pipeline;
 
     inline void destroy(const VkZeroDevice &device) const {
         device.device.destroyPipelineLayout(pipeline);
-        device.device.destroyDescriptorSetLayout(descriptorSet);
+        for (const auto &set : descriptorSets) {
+            device.device.destroyDescriptorSetLayout(set);
+        }
     }
 };
 
@@ -227,14 +229,40 @@ createDevice(const VkZeroInstance &instance,
 
 inline VkZeroLayout
 createLayout(const VkZeroDevice &device,
-             const std::vector<VkZeroBinding> &bindings,
+             const std::vector<std::vector<VkZeroBinding>> &sets,
              const std::vector<vk::PushConstantRange> pushConstantRanges) {
-    return {};
+    std::vector<vk::DescriptorSetLayout> setLayouts{};
+    for (const auto &bindings : sets) {
+        std::vector<vk::DescriptorSetLayoutBinding>
+            descriptorSetLayoutBindings{};
+        for (const auto &binding : bindings) {
+            descriptorSetLayoutBindings.push_back(
+                vk::DescriptorSetLayoutBinding{
+                    .binding = binding.binding.dstBinding,
+                    .descriptorType = binding.binding.descriptorType,
+                    .descriptorCount = binding.binding.descriptorCount,
+                    .stageFlags = binding.stageFlags,
+                });
+            if (binding.binding.pImageInfo) {
+                if (binding.binding.pImageInfo->sampler) {
+                    descriptorSetLayoutBindings.back().setPImmutableSamplers(
+                        &binding.binding.pImageInfo->sampler);
+                }
+            }
+        }
+        vk::DescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
+        descriptorSetCreateInfo.setBindings(descriptorSetLayoutBindings);
+        setLayouts.push_back(
+            device.device.createDescriptorSetLayout(descriptorSetCreateInfo));
+    }
+    vk::PipelineLayoutCreateInfo pipelineCreateInfo{};
+    pipelineCreateInfo.setSetLayouts(setLayouts);
+    pipelineCreateInfo.setPushConstantRanges(pushConstantRanges);
+    return VkZeroLayout{
+        .descriptorSets = setLayouts,
+        .pipeline = device.device.createPipelineLayout(pipelineCreateInfo),
+    };
 }
-
-inline void updateDescriptorSets(
-    const VkZeroDevice &device, const std::vector<VkZeroBinding> &bindings,
-    const std::vector<const std::vector<vk::DescriptorSet>> descriptorSets) {}
 
 inline vk::ShaderModule createShaderModule(const VkZeroDevice &device,
                                            const std::string source) {

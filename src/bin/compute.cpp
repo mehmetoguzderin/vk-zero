@@ -20,6 +20,21 @@ int main(int argc, char *argv[]) {
                     },
             },
             std::vector<vk::DescriptorPoolSize>{});
+        // Create buffers
+        // Write buffers
+        std::vector<std::vector<VkZeroBinding>> bindings{{}};
+        const auto layout = createLayout(device, bindings, {});
+        // Allocate descriptor sets
+        // Update descriptor sets
+        const auto shaderModule = createShaderModule(device, "compute.hpp.spv");
+        // Create pipeline
+        // Create command buffer
+        // Record command buffer
+        // Submit command buffer
+        // Read buffers
+        // Clean resources
+        device.device.destroyShaderModule(shaderModule);
+        layout.destroy(device);
         device.destroy();
         instance.destroy();
     } catch (const int error) {
