@@ -88,6 +88,7 @@ struct VkZeroBuffer {
     vk::Buffer buffer;
     VmaAllocation allocation;
     VmaAllocationInfo info;
+    vk::DescriptorBufferInfo descriptor;
 
     inline void destroy(const VkZeroDevice &device) const {
         vmaDestroyBuffer(device.allocator, buffer, allocation);
@@ -251,9 +252,15 @@ createBuffer(const VkZeroDevice &device,
         throw -1;
     }
     return VkZeroBuffer{
-        .buffer = vk::Buffer{vkBuffer},
+        .buffer = vkBuffer,
         .allocation = allocation,
         .info = info,
+        .descriptor =
+            vk::DescriptorBufferInfo{
+                .buffer = vkBuffer,
+                .offset = 0,
+                .range = bufferCreateInfo.size,
+            },
     };
 }
 
@@ -269,10 +276,10 @@ createBuffer(const VkZeroDevice &device,
 
 inline VkZeroLayout
 createLayout(const VkZeroDevice &device,
-             const std::vector<std::vector<VkZeroBinding>> &sets,
+             const std::vector<std::vector<VkZeroBinding>> &descriptors,
              const std::vector<vk::PushConstantRange> pushConstantRanges) {
     std::vector<vk::DescriptorSetLayout> setLayouts{};
-    for (const auto &bindings : sets) {
+    for (const auto &bindings : descriptors) {
         std::vector<vk::DescriptorSetLayoutBinding>
             descriptorSetLayoutBindings{};
         for (const auto &binding : bindings) {
@@ -302,6 +309,22 @@ createLayout(const VkZeroDevice &device,
         .descriptorSets = setLayouts,
         .pipeline = device.device.createPipelineLayout(pipelineCreateInfo),
     };
+}
+
+inline void
+writeDescriptorSets(const VkZeroDevice &device,
+                    const std::vector<std::vector<VkZeroBinding>> &descriptors,
+                    const std::vector<vk::DescriptorSet> &sets) {
+    for (auto i = 0; const auto &bindings : descriptors) {
+        std::vector<vk::WriteDescriptorSet> writes{};
+        for (auto j = 0; const auto &binding : bindings) {
+            writes.push_back(binding.binding);
+            writes.back().dstSet = sets[i];
+            ++j;
+        }
+        device.device.updateDescriptorSets(writes, {});
+        ++i;
+    }
 }
 
 inline vk::ShaderModule createShaderModule(const VkZeroDevice &device,

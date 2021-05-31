@@ -43,11 +43,42 @@ int main(int argc, char *argv[]) {
                     .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
                     .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
                 });
-        // Write buffers
-        std::vector<std::vector<VkZeroBinding>> bindings{{}};
+        constants[0].weights = vec4(2.f);
+        constants[0].length = uvec2(1, compute::ELEMENT_WIDTH);
+        for (auto i = 0; i < constants[0].length.y; ++i) {
+            elements[0].element[i] = vec4(4.f);
+        }
+        std::vector<std::vector<VkZeroBinding>> bindings{
+            std::vector<VkZeroBinding>{
+                VkZeroBinding{
+                    .binding =
+                        vk::WriteDescriptorSet{
+                            .dstBinding = 0,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType =
+                                vk::DescriptorType::eStorageBuffer,
+                            .pBufferInfo = &elementsBuffer.descriptor,
+                        },
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
+                },
+                VkZeroBinding{
+                    .binding =
+                        vk::WriteDescriptorSet{
+                            .dstBinding = 1,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType =
+                                vk::DescriptorType::eUniformBuffer,
+                            .pBufferInfo = &constantsBuffer.descriptor,
+                        },
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
+                },
+            },
+        };
         const auto layout = createLayout(device, bindings, {});
         // Allocate descriptor sets
-        // Update descriptor sets
+        // Write descriptor sets
         const auto shaderModule = createShaderModule(device, "compute.hpp.spv");
         // Create pipeline
         // Create command buffer
