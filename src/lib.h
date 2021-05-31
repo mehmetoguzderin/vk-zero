@@ -84,6 +84,16 @@ struct VkZeroDevice {
     }
 };
 
+struct VkZeroBuffer {
+    vk::Buffer buffer;
+    VmaAllocation allocation;
+    VmaAllocationInfo info;
+
+    inline void destroy(const VkZeroDevice &device) const {
+        vmaDestroyBuffer(device.allocator, buffer, allocation);
+    }
+};
+
 struct VkZeroBinding {
     vk::WriteDescriptorSet binding;
     vk::ShaderStageFlags stageFlags;
@@ -225,6 +235,36 @@ createDevice(const VkZeroInstance &instance,
                     }),
             },
     };
+}
+
+inline VkZeroBuffer
+createBuffer(const VkZeroDevice &device,
+             const vk::BufferCreateInfo bufferCreateInfo,
+             const VmaAllocationCreateInfo allocationCreateInfo) {
+    VkBuffer vkBuffer;
+    VmaAllocation allocation;
+    VmaAllocationInfo info;
+    VkBufferCreateInfo vkBufferCreateInfo = bufferCreateInfo;
+    if (vmaCreateBuffer(device.allocator, &vkBufferCreateInfo,
+                        &allocationCreateInfo, &vkBuffer, &allocation,
+                        &info) != VK_SUCCESS) {
+        throw -1;
+    }
+    return VkZeroBuffer{
+        .buffer = vk::Buffer{vkBuffer},
+        .allocation = allocation,
+        .info = info,
+    };
+}
+
+template <typename T>
+std::tuple<VkZeroBuffer, T *>
+createBuffer(const VkZeroDevice &device,
+             const vk::BufferCreateInfo bufferCreateInfo,
+             const VmaAllocationCreateInfo allocationCreateInfo) {
+    auto buffer = createBuffer(device, bufferCreateInfo, allocationCreateInfo);
+    return std::make_tuple(buffer,
+                           reinterpret_cast<T *>(buffer.info.pMappedData));
 }
 
 inline VkZeroLayout

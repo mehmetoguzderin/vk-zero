@@ -20,7 +20,29 @@ int main(int argc, char *argv[]) {
                     },
             },
             std::vector<vk::DescriptorPoolSize>{});
-        // Create buffers
+        const auto [elementsBuffer, elements] = createBuffer<compute::Elements>(
+            device,
+            vk::BufferCreateInfo{
+                .size = sizeof(compute::Elements),
+                .usage = vk::BufferUsageFlagBits::eStorageBuffer,
+                .sharingMode = vk::SharingMode::eExclusive,
+            },
+            VmaAllocationCreateInfo{
+                .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+            });
+        const auto [constantsBuffer, constants] =
+            createBuffer<compute::Constants>(
+                device,
+                vk::BufferCreateInfo{
+                    .size = sizeof(compute::Constants),
+                    .usage = vk::BufferUsageFlagBits::eUniformBuffer,
+                    .sharingMode = vk::SharingMode::eExclusive,
+                },
+                VmaAllocationCreateInfo{
+                    .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                });
         // Write buffers
         std::vector<std::vector<VkZeroBinding>> bindings{{}};
         const auto layout = createLayout(device, bindings, {});
@@ -35,6 +57,8 @@ int main(int argc, char *argv[]) {
         // Clean resources
         device.device.destroyShaderModule(shaderModule);
         layout.destroy(device);
+        constantsBuffer.destroy(device);
+        elementsBuffer.destroy(device);
         device.destroy();
         instance.destroy();
     } catch (const int error) {
