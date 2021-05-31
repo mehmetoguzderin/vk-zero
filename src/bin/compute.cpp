@@ -84,7 +84,14 @@ int main(int argc, char *argv[]) {
         // Create command buffer
         // Record command buffer
         // Submit command buffer
-        // Read buffers
+        constexpr auto LINE_WIDTH = 8;
+        for (auto i = 0; i < constants[0].length.y; ++i) {
+            std::cout << elements[0].element[i].x << " ";
+            std::cout << elements[0].element[i].y << " ";
+            std::cout << elements[0].element[i].z << " ";
+            std::cout << elements[0].element[i].w;
+            std::cout << ((i % LINE_WIDTH) == (LINE_WIDTH - 1) ? "\n" : " , ");
+        }
         // Clean resources
         device.device.destroyShaderModule(shaderModule);
         layout.destroy(device);
