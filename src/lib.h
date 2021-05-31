@@ -101,12 +101,12 @@ struct VkZeroBinding {
 };
 
 struct VkZeroLayout {
-    std::vector<vk::DescriptorSetLayout> descriptorSets;
+    std::vector<vk::DescriptorSetLayout> sets;
     vk::PipelineLayout pipeline;
 
     inline void destroy(const VkZeroDevice &device) const {
         device.device.destroyPipelineLayout(pipeline);
-        for (const auto &set : descriptorSets) {
+        for (const auto &set : sets) {
             device.device.destroyDescriptorSetLayout(set);
         }
     }
@@ -306,13 +306,13 @@ createLayout(const VkZeroDevice &device,
     pipelineCreateInfo.setSetLayouts(setLayouts);
     pipelineCreateInfo.setPushConstantRanges(pushConstantRanges);
     return VkZeroLayout{
-        .descriptorSets = setLayouts,
+        .sets = setLayouts,
         .pipeline = device.device.createPipelineLayout(pipelineCreateInfo),
     };
 }
 
 inline void
-writeDescriptorSets(const VkZeroDevice &device,
+writeSets(const VkZeroDevice &device,
                     const std::vector<std::vector<VkZeroBinding>> &descriptors,
                     const std::vector<vk::DescriptorSet> &sets) {
     for (auto i = 0; const auto &bindings : descriptors) {

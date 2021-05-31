@@ -19,7 +19,16 @@ int main(int argc, char *argv[]) {
                         .variablePointers = true,
                     },
             },
-            std::vector<vk::DescriptorPoolSize>{});
+            std::vector<vk::DescriptorPoolSize>{
+                vk::DescriptorPoolSize{
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1 << 16,
+                },
+                vk::DescriptorPoolSize{
+                    .type = vk::DescriptorType::eUniformBuffer,
+                    .descriptorCount = 1 << 16,
+                },
+            });
         const auto [elementsBuffer, elements] = createBuffer<compute::Elements>(
             device,
             vk::BufferCreateInfo{
@@ -48,7 +57,7 @@ int main(int argc, char *argv[]) {
         for (auto i = 0; i < constants[0].length.y; ++i) {
             elements[0].element[i] = vec4(4.f);
         }
-        std::vector<std::vector<VkZeroBinding>> bindings{
+        std::vector<std::vector<VkZeroBinding>> descriptors{
             std::vector<VkZeroBinding>{
                 VkZeroBinding{
                     .binding =
@@ -76,9 +85,14 @@ int main(int argc, char *argv[]) {
                 },
             },
         };
-        const auto layout = createLayout(device, bindings, {});
-        // Allocate descriptor sets
-        // Write descriptor sets
+        const auto layout = createLayout(device, descriptors, {});
+        std::vector<vk::DescriptorSet> sets =
+            device.device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{
+                .descriptorPool = device.descriptorPool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = layout.sets.data(),
+            });
+        writeSets(device, descriptors, sets);
         const auto shaderModule = createShaderModule(device, "compute.hpp.spv");
         // Create pipeline
         // Create command buffer
