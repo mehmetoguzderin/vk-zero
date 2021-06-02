@@ -3,6 +3,7 @@
 
 #ifdef VK_ZERO_CPU
 
+#include <span>
 #include <vector>
 
 #include "vulkan/vulkan.hpp"
@@ -266,9 +267,9 @@ createBuffer(const VkZeroDevice &device,
 
 template <typename T>
 std::tuple<VkZeroBuffer, T *>
-createBuffer(const VkZeroDevice &device,
-             const vk::BufferCreateInfo bufferCreateInfo,
-             const VmaAllocationCreateInfo allocationCreateInfo) {
+createBufferWithType(const VkZeroDevice &device,
+                     const vk::BufferCreateInfo bufferCreateInfo,
+                     const VmaAllocationCreateInfo allocationCreateInfo) {
     auto buffer = createBuffer(device, bufferCreateInfo, allocationCreateInfo);
     return std::make_tuple(buffer,
                            reinterpret_cast<T *>(buffer.info.pMappedData));
@@ -278,43 +279,40 @@ inline VkZeroLayout
 createLayout(const VkZeroDevice &device,
              const std::vector<std::vector<VkZeroBinding>> &descriptors,
              const std::vector<vk::PushConstantRange> pushConstantRanges) {
-    std::vector<vk::DescriptorSetLayout> setLayouts{};
+    std::vector<vk::DescriptorSetLayout> sets{};
     for (const auto &bindings : descriptors) {
-        std::vector<vk::DescriptorSetLayoutBinding>
-            descriptorSetLayoutBindings{};
+        std::vector<vk::DescriptorSetLayoutBinding> setBindings{};
         for (const auto &binding : bindings) {
-            descriptorSetLayoutBindings.push_back(
-                vk::DescriptorSetLayoutBinding{
-                    .binding = binding.binding.dstBinding,
-                    .descriptorType = binding.binding.descriptorType,
-                    .descriptorCount = binding.binding.descriptorCount,
-                    .stageFlags = binding.stageFlags,
-                });
+            setBindings.push_back(vk::DescriptorSetLayoutBinding{
+                .binding = binding.binding.dstBinding,
+                .descriptorType = binding.binding.descriptorType,
+                .descriptorCount = binding.binding.descriptorCount,
+                .stageFlags = binding.stageFlags,
+            });
             if (binding.binding.pImageInfo) {
                 if (binding.binding.pImageInfo->sampler) {
-                    descriptorSetLayoutBindings.back().setPImmutableSamplers(
+                    setBindings.back().setPImmutableSamplers(
                         &binding.binding.pImageInfo->sampler);
                 }
             }
         }
-        vk::DescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
-        descriptorSetCreateInfo.setBindings(descriptorSetLayoutBindings);
-        setLayouts.push_back(
-            device.device.createDescriptorSetLayout(descriptorSetCreateInfo));
+        vk::DescriptorSetLayoutCreateInfo setCreateInfo{};
+        setCreateInfo.setBindings(setBindings);
+        sets.push_back(device.device.createDescriptorSetLayout(setCreateInfo));
     }
     vk::PipelineLayoutCreateInfo pipelineCreateInfo{};
-    pipelineCreateInfo.setSetLayouts(setLayouts);
+    pipelineCreateInfo.setSetLayouts(sets);
     pipelineCreateInfo.setPushConstantRanges(pushConstantRanges);
     return VkZeroLayout{
-        .sets = setLayouts,
+        .sets = sets,
         .pipeline = device.device.createPipelineLayout(pipelineCreateInfo),
     };
 }
 
 inline void
 writeSets(const VkZeroDevice &device,
-                    const std::vector<std::vector<VkZeroBinding>> &descriptors,
-                    const std::vector<vk::DescriptorSet> &sets) {
+          const std::vector<std::vector<VkZeroBinding>> &descriptors,
+          const std::vector<vk::DescriptorSet> &sets) {
     for (auto i = 0; const auto &bindings : descriptors) {
         std::vector<vk::WriteDescriptorSet> writes{};
         for (auto j = 0; const auto &binding : bindings) {
@@ -327,8 +325,8 @@ writeSets(const VkZeroDevice &device,
     }
 }
 
-inline vk::ShaderModule createShaderModule(const VkZeroDevice &device,
-                                           const std::string source) {
+inline vk::ShaderModule createModule(const VkZeroDevice &device,
+                                     const std::string source) {
     std::ifstream file(source, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         throw -1;

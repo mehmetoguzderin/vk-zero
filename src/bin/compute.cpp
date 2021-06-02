@@ -29,19 +29,20 @@ int main(int argc, char *argv[]) {
                     .descriptorCount = 1 << 16,
                 },
             });
-        const auto [elementsBuffer, elements] = createBuffer<compute::Elements>(
-            device,
-            vk::BufferCreateInfo{
-                .size = sizeof(compute::Elements),
-                .usage = vk::BufferUsageFlagBits::eStorageBuffer,
-                .sharingMode = vk::SharingMode::eExclusive,
-            },
-            VmaAllocationCreateInfo{
-                .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-            });
+        const auto [elementsBuffer, elements] =
+            createBufferWithType<compute::Elements>(
+                device,
+                vk::BufferCreateInfo{
+                    .size = sizeof(compute::Elements),
+                    .usage = vk::BufferUsageFlagBits::eStorageBuffer,
+                    .sharingMode = vk::SharingMode::eExclusive,
+                },
+                VmaAllocationCreateInfo{
+                    .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                });
         const auto [constantsBuffer, constants] =
-            createBuffer<compute::Constants>(
+            createBufferWithType<compute::Constants>(
                 device,
                 vk::BufferCreateInfo{
                     .size = sizeof(compute::Constants),
@@ -53,8 +54,10 @@ int main(int argc, char *argv[]) {
                     .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
                 });
         constants[0].weights = vec4(2.f);
-        constants[0].length = uvec2(1, compute::ELEMENT_WIDTH);
-        for (auto i = 0; i < constants[0].length.y; ++i) {
+        constants[0].length = uvec2(1, 0);
+        for (auto i = 0; i < constants[0].length.x * compute::ELEMENT_WIDTH +
+                                 constants[0].length.y;
+             ++i) {
             elements[0].element[i] = vec4(4.f);
         }
         std::vector<std::vector<VkZeroBinding>> descriptors{
@@ -93,13 +96,75 @@ int main(int argc, char *argv[]) {
                 .pSetLayouts = layout.sets.data(),
             });
         writeSets(device, descriptors, sets);
-        const auto shaderModule = createShaderModule(device, "compute.hpp.spv");
-        // Create pipeline
+        const auto module = createModule(device, "compute.hpp.spv");
+        uint3 specializationData{16, 16, 1};
+        std::vector<vk::SpecializationMapEntry> specializationMapEntries{
+            vk::SpecializationMapEntry{
+                .constantID = 0,
+                .offset = sizeof(uint32_t) * 0,
+                .size = sizeof(uint32_t),
+            },
+            vk::SpecializationMapEntry{
+                .constantID = 1,
+                .offset = sizeof(uint32_t) * 1,
+                .size = sizeof(uint32_t),
+            },
+            vk::SpecializationMapEntry{
+                .constantID = 2,
+                .offset = sizeof(uint32_t) * 2,
+                .size = sizeof(uint32_t),
+            },
+        };
+        vk::SpecializationInfo specializationInfo{
+            .dataSize = sizeof(specializationData),
+            .pData = &specializationData,
+        };
+        specializationInfo.setMapEntries(specializationMapEntries);
+        std::string moduleStageName{"computeKernel"};
+        const auto pipeline =
+            device.device
+                .createComputePipeline(
+                    {},
+                    vk::ComputePipelineCreateInfo{
+                        .stage =
+                            vk::PipelineShaderStageCreateInfo{
+                                .stage = vk::ShaderStageFlagBits::eCompute,
+                                .module = module,
+                                .pName = moduleStageName.data(),
+                                .pSpecializationInfo = &specializationInfo,
+                            },
+                        .layout = layout.pipeline,
+                    })
+                .value;
+        const auto commandBuffers =
+            device.device.allocateCommandBuffers(vk::CommandBufferAllocateInfo{
+                .commandPool = device.queue.commandPool,
+                .commandBufferCount = 1,
+            });
+        commandBuffers[0].begin(vk::CommandBufferBeginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+        });
+        commandBuffers[0].bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                             layout.pipeline, 0, sets, {});
+        commandBuffers[0].bindPipeline(vk::PipelineBindPoint::eCompute,
+                                       pipeline);
+        commandBuffers[0].dispatch(
+            (constants[0].length.x * compute::ELEMENT_WIDTH +
+             constants[0].length.y) /
+                    (specializationData.x * specializationData.y) +
+                1,
+            1, 1);
+        commandBuffers[0].end();
+        device.queue.queue.submit(
+            vk::SubmitInfo{}.setCommandBuffers(commandBuffers));
+        device.queue.queue.waitIdle();
         // Create command buffer
         // Record command buffer
         // Submit command buffer
         constexpr auto LINE_WIDTH = 8;
-        for (auto i = 0; i < constants[0].length.y; ++i) {
+        for (auto i = 0; i < constants[0].length.x * compute::ELEMENT_WIDTH +
+                                 constants[0].length.y;
+             ++i) {
             std::cout << elements[0].element[i].x << " ";
             std::cout << elements[0].element[i].y << " ";
             std::cout << elements[0].element[i].z << " ";
@@ -107,7 +172,10 @@ int main(int argc, char *argv[]) {
             std::cout << ((i % LINE_WIDTH) == (LINE_WIDTH - 1) ? "\n" : " , ");
         }
         // Clean resources
-        device.device.destroyShaderModule(shaderModule);
+        device.device.freeCommandBuffers(device.queue.commandPool,
+                                         commandBuffers);
+        device.device.destroyPipeline(pipeline);
+        device.device.destroyShaderModule(module);
         layout.destroy(device);
         constantsBuffer.destroy(device);
         elementsBuffer.destroy(device);
