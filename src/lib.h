@@ -266,13 +266,14 @@ createBuffer(const VkZeroDevice &device,
 }
 
 template <typename T>
-std::tuple<VkZeroBuffer, T *>
+std::tuple<VkZeroBuffer, std::span<T>>
 createBufferWithType(const VkZeroDevice &device,
                      const vk::BufferCreateInfo bufferCreateInfo,
                      const VmaAllocationCreateInfo allocationCreateInfo) {
     auto buffer = createBuffer(device, bufferCreateInfo, allocationCreateInfo);
-    return std::make_tuple(buffer,
-                           reinterpret_cast<T *>(buffer.info.pMappedData));
+    return std::make_tuple(
+        buffer, std::span{reinterpret_cast<T *>(buffer.info.pMappedData),
+                          bufferCreateInfo.size / sizeof(T)});
 }
 
 inline VkZeroLayout

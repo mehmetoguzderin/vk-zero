@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
             createBufferWithType<compute::Elements>(
                 device,
                 vk::BufferCreateInfo{
-                    .size = sizeof(compute::Elements),
+                    .size = sizeof(compute::Elements) * 8192 * 16,
                     .usage = vk::BufferUsageFlagBits::eStorageBuffer,
                     .sharingMode = vk::SharingMode::eExclusive,
                 },
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
                     .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
                 });
         constants[0].weights = vec4(2.f);
-        constants[0].length = uvec2(1, 0);
+        constants[0].length = uvec2(elements.size(), 0);
         for (auto i = 0; i < constants[0].length.x * compute::ELEMENT_WIDTH +
                                  constants[0].length.y;
              ++i) {
@@ -155,15 +155,16 @@ int main(int argc, char *argv[]) {
                 1,
             1, 1);
         commandBuffers[0].end();
+        auto t0 = std::chrono::high_resolution_clock::now();
         device.queue.queue.submit(
             vk::SubmitInfo{}.setCommandBuffers(commandBuffers));
         device.queue.queue.waitIdle();
-        // Create command buffer
-        // Record command buffer
-        // Submit command buffer
-        constexpr auto LINE_WIDTH = 8;
-        for (auto i = 0; i < constants[0].length.x * compute::ELEMENT_WIDTH +
-                                 constants[0].length.y;
+        auto t1 = std::chrono::high_resolution_clock::now();
+        constexpr auto LINE_WIDTH = uint64_t{8};
+        for (auto i = 0;
+             i < std::min(constants[0].length.x * compute::ELEMENT_WIDTH +
+                              constants[0].length.y,
+                          LINE_WIDTH * 4);
              ++i) {
             std::cout << elements[0].element[i].x << " ";
             std::cout << elements[0].element[i].y << " ";
@@ -171,7 +172,6 @@ int main(int argc, char *argv[]) {
             std::cout << elements[0].element[i].w;
             std::cout << ((i % LINE_WIDTH) == (LINE_WIDTH - 1) ? "\n" : " , ");
         }
-        // Clean resources
         device.device.freeCommandBuffers(device.queue.commandPool,
                                          commandBuffers);
         device.device.destroyPipeline(pipeline);
@@ -181,6 +181,8 @@ int main(int argc, char *argv[]) {
         elementsBuffer.destroy(device);
         device.destroy();
         instance.destroy();
+        std::chrono::duration<double, std::milli> ms0 = t1 - t0;
+        std::cout << "Runtime: " << ms0.count() << "ms\n";
     } catch (const int error) {
         std::cout << "Error\n";
     }
