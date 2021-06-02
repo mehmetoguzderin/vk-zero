@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
             createBufferWithType<compute::Elements>(
                 device,
                 vk::BufferCreateInfo{
-                    .size = sizeof(compute::Elements) * 8192 * 16,
+                    .size = sizeof(compute::Elements) * 2048,
                     .usage = vk::BufferUsageFlagBits::eStorageBuffer,
                     .sharingMode = vk::SharingMode::eExclusive,
                 },
