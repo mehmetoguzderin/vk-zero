@@ -53,7 +53,6 @@ inline uint32_t get_global_id(uint32_t dimindx) { return GLOBAL_ID[dimindx]; }
 struct VkZeroInstance {
     vk::Instance instance;
     std::vector<vk::PhysicalDevice> physicalDevices;
-    std::vector<vk::PhysicalDeviceGroupProperties> physicalDeviceGroups;
 #if !defined(NDEBUG)
     vk::DebugUtilsMessengerEXT debugUtilsMessenger;
 #endif
@@ -226,7 +225,6 @@ createInstance(std::vector<const char *> &enabledLayers,
     return VkZeroInstance {
         .instance = instance,
         .physicalDevices = instance.enumeratePhysicalDevices(),
-        .physicalDeviceGroups = instance.enumeratePhysicalDeviceGroups(),
 #if !defined(NDEBUG)
         .debugUtilsMessenger = instance.createDebugUtilsMessengerEXT(
             vk::DebugUtilsMessengerCreateInfoEXT{
