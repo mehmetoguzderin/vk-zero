@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
                 VmaAllocationCreateInfo{
                     .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
                     .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                    .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 });
         const auto [constantsBuffer, constants] =
             createBufferWithType<compute::Constants>(
@@ -53,6 +54,7 @@ int main(int argc, char *argv[]) {
                 VmaAllocationCreateInfo{
                     .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
                     .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                    .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 });
         constants[0].weights = vec4(2.f);
         constants[0].length = uvec2(elements.size(), 0);
