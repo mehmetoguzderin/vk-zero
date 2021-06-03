@@ -3,8 +3,9 @@
 
 int main(int argc, char *argv[]) {
     try {
+        std::vector<const char *> enabledLayers{};
         std::vector<const char *> enabledExtensions{};
-        const auto instance = createInstance(enabledExtensions);
+        const auto instance = createInstance(enabledLayers, enabledExtensions);
         const auto device = createDevice(
             instance,
             VkZeroPhysicalDeviceFeatures{
@@ -183,8 +184,16 @@ int main(int argc, char *argv[]) {
         instance.destroy();
         std::chrono::duration<double, std::milli> ms0 = t1 - t0;
         std::cout << "Runtime: " << ms0.count() << "ms\n";
-    } catch (const int error) {
-        std::cout << "Error\n";
+    } catch (const int &error) {
+        std::cout << "VkZeroError"
+                  << "\n";
+    } catch (const vk::SystemError &err) {
+        std::cout << "VkSystemError: " << err.what() << "\n";
+    } catch (const std::exception &err) {
+        std::cout << "StdException: " << err.what() << "\n";
+    } catch (...) {
+        std::cout << "OtherError"
+                  << "\n";
     }
     return 0;
 }

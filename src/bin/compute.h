@@ -5,8 +5,6 @@
 
 #ifdef VK_ZERO_CPU
 
-#include <iostream>
-
 #else
 
 #endif

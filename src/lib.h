@@ -3,6 +3,7 @@
 
 #ifdef VK_ZERO_CPU
 
+#include <iostream>
 #include <span>
 #include <vector>
 
@@ -53,8 +54,16 @@ struct VkZeroInstance {
     vk::Instance instance;
     std::vector<vk::PhysicalDevice> physicalDevices;
     std::vector<vk::PhysicalDeviceGroupProperties> physicalDeviceGroups;
+#if !defined(NDEBUG)
+    vk::DebugUtilsMessengerEXT debugUtilsMessenger;
+#endif
 
-    inline void destroy() const { instance.destroy(); }
+    inline void destroy() const {
+#if !defined(NDEBUG)
+        instance.destroyDebugUtilsMessengerEXT(debugUtilsMessenger);
+#endif
+        instance.destroy();
+    }
 };
 
 struct VkZeroPhysicalDeviceFeatures {
@@ -114,7 +123,8 @@ struct VkZeroLayout {
 };
 
 inline VkZeroInstance
-createInstance(const std::vector<const char *> &enabledExtensions) {
+createInstance(std::vector<const char *> &enabledLayers,
+               std::vector<const char *> &enabledExtensions) {
     vk::DynamicLoader dl;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
@@ -122,17 +132,113 @@ createInstance(const std::vector<const char *> &enabledExtensions) {
     vk::ApplicationInfo applicationInfo{
         .apiVersion = VK_API_VERSION_1_1,
     };
+#if !defined(NDEBUG)
+    enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+    enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
     auto instance = vk::createInstance(vk::InstanceCreateInfo{
         .pApplicationInfo = &applicationInfo,
+        .enabledLayerCount = static_cast<uint32_t>(enabledLayers.size()),
+        .ppEnabledLayerNames = enabledLayers.data(),
         .enabledExtensionCount =
             static_cast<uint32_t>(enabledExtensions.size()),
         .ppEnabledExtensionNames = enabledExtensions.data(),
     });
     VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
-    return VkZeroInstance{
+#if !defined(NDEBUG)
+    static PFN_vkDebugUtilsMessengerCallbackEXT debugUtilsMessengerCallback =
+        [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+           VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+           VkDebugUtilsMessengerCallbackDataEXT const *pCallbackData,
+           void *pUserData) -> VkBool32 {
+#if !defined(NDEBUG)
+        if (pCallbackData->messageIdNumber == 648835635) {
+            // UNASSIGNED-khronos-Validation-debug-build-warning-message
+            return VK_FALSE;
+        }
+        if (pCallbackData->messageIdNumber == 767975156) {
+            // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
+            return VK_FALSE;
+        }
+#endif
+
+        std::cout << vk::to_string(
+                         static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(
+                             messageSeverity))
+                  << ": "
+                  << vk::to_string(
+                         static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(
+                             messageTypes))
+                  << ":\n";
+        std::cout << " "
+                  << "messageIDName   = <" << pCallbackData->pMessageIdName
+                  << ">\n";
+        std::cout << " "
+                  << "messageIdNumber = " << pCallbackData->messageIdNumber
+                  << "\n";
+        std::cout << " "
+                  << "message         = <" << pCallbackData->pMessage << ">\n";
+        if (0 < pCallbackData->queueLabelCount) {
+            std::cout << " "
+                      << "Queue Labels:\n";
+            for (uint8_t i = 0; i < pCallbackData->queueLabelCount; i++) {
+                std::cout << "  "
+                          << "labelName = <"
+                          << pCallbackData->pQueueLabels[i].pLabelName << ">\n";
+            }
+        }
+        if (0 < pCallbackData->cmdBufLabelCount) {
+            std::cout << " "
+                      << "CommandBuffer Labels:\n";
+            for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++) {
+                std::cout << "  "
+                          << "labelName = <"
+                          << pCallbackData->pCmdBufLabels[i].pLabelName
+                          << ">\n";
+            }
+        }
+        if (0 < pCallbackData->objectCount) {
+            std::cout << " "
+                      << "Objects:\n";
+            for (uint8_t i = 0; i < pCallbackData->objectCount; i++) {
+                std::cout << "  "
+                          << "Object " << i << "\n";
+                std::cout << "   "
+                          << "objectType   = "
+                          << vk::to_string(static_cast<vk::ObjectType>(
+                                 pCallbackData->pObjects[i].objectType))
+                          << "\n";
+                std::cout << "   "
+                          << "objectHandle = "
+                          << pCallbackData->pObjects[i].objectHandle << "\n";
+                if (pCallbackData->pObjects[i].pObjectName) {
+                    std::cout << "   "
+                              << "objectName   = <"
+                              << pCallbackData->pObjects[i].pObjectName
+                              << ">\n";
+                }
+            }
+        }
+        return VK_FALSE;
+    };
+#endif
+
+    return VkZeroInstance {
         .instance = instance,
         .physicalDevices = instance.enumeratePhysicalDevices(),
         .physicalDeviceGroups = instance.enumeratePhysicalDeviceGroups(),
+#if !defined(NDEBUG)
+        .debugUtilsMessenger = instance.createDebugUtilsMessengerEXT(
+            vk::DebugUtilsMessengerCreateInfoEXT{
+                .messageSeverity =
+                    vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                    vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+                .messageType =
+                    vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+                    vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+                .pfnUserCallback = debugUtilsMessengerCallback,
+            }),
+#endif
     };
 }
 
