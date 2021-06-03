@@ -125,7 +125,7 @@ struct VkZeroLayout {
 inline VkZeroInstance
 createInstance(std::vector<const char *> &enabledLayers,
                std::vector<const char *> &enabledExtensions) {
-    vk::DynamicLoader dl;
+    static vk::DynamicLoader dl;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);

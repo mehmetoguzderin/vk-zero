@@ -1,6 +1,12 @@
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}>)
 
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  add_definitions(-DNOMINMAX -DVK_USE_PLATFORM_WIN32_KHR)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  add_definitions(-DVK_USE_PLATFORM_XCB_KHR)
+endif()
+
 add_compile_definitions(VK_ZERO_CPU)
 add_compile_definitions(VK_NO_PROTOTYPES)
 add_compile_definitions(VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
