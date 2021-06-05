@@ -57,12 +57,11 @@ int main(int argc, char *argv[]) {
                     .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 });
         constants[0].weights = vec4(2.f);
-        constants[0].length = uvec2(elements.size(), 0);
-        for (auto i = 0; i < constants[0].length.x * compute::ELEMENT_WIDTH +
-                                 constants[0].length.y;
-             ++i) {
-            elements[0].element[i] = vec4(4.f);
-        }
+        constants[0].size = elements.size();
+        std::fill(elements.begin(), elements.end(),
+                  compute::Elements{
+                      .element = vec4(4.f),
+                  });
         std::vector<std::vector<VkZeroBinding>> descriptors{
             std::vector<VkZeroBinding>{
                 VkZeroBinding{
@@ -152,10 +151,7 @@ int main(int argc, char *argv[]) {
         commandBuffers[0].bindPipeline(vk::PipelineBindPoint::eCompute,
                                        pipeline);
         commandBuffers[0].dispatch(
-            (constants[0].length.x * compute::ELEMENT_WIDTH +
-             constants[0].length.y) /
-                    (specializationData.x * specializationData.y) +
-                1,
+            elements.size() / (specializationData.x * specializationData.y) + 1,
             1, 1);
         commandBuffers[0].end();
         auto t0 = std::chrono::high_resolution_clock::now();
@@ -163,16 +159,12 @@ int main(int argc, char *argv[]) {
             vk::SubmitInfo{}.setCommandBuffers(commandBuffers));
         device.queue.queue.waitIdle();
         auto t1 = std::chrono::high_resolution_clock::now();
-        constexpr auto LINE_WIDTH = uint64_t{8};
-        for (auto i = 0;
-             i < std::min(constants[0].length.x * compute::ELEMENT_WIDTH +
-                              constants[0].length.y,
-                          LINE_WIDTH * 4);
-             ++i) {
-            std::cout << elements[0].element[i].x << " ";
-            std::cout << elements[0].element[i].y << " ";
-            std::cout << elements[0].element[i].z << " ";
-            std::cout << elements[0].element[i].w;
+        constexpr auto LINE_WIDTH = size_t{8};
+        for (auto i = 0; i < std::min(elements.size(), LINE_WIDTH * 4); ++i) {
+            std::cout << elements[i].element.x << " ";
+            std::cout << elements[i].element.y << " ";
+            std::cout << elements[i].element.z << " ";
+            std::cout << elements[i].element.w;
             std::cout << ((i % LINE_WIDTH) == (LINE_WIDTH - 1) ? "\n" : " , ");
         }
         device.device.freeCommandBuffers(device.queue.commandPool,

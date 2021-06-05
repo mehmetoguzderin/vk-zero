@@ -347,22 +347,22 @@ inline VkZeroBuffer
 createBuffer(const VkZeroDevice &device,
              const vk::BufferCreateInfo bufferCreateInfo,
              const VmaAllocationCreateInfo allocationCreateInfo) {
-    VkBuffer vkBuffer;
+    VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocationInfo info;
     VkBufferCreateInfo vkBufferCreateInfo = bufferCreateInfo;
     if (vmaCreateBuffer(device.allocator, &vkBufferCreateInfo,
-                        &allocationCreateInfo, &vkBuffer, &allocation,
+                        &allocationCreateInfo, &buffer, &allocation,
                         &info) != VK_SUCCESS) {
         throw -1;
     }
     return VkZeroBuffer{
-        .buffer = vkBuffer,
+        .buffer = buffer,
         .allocation = allocation,
         .info = info,
         .descriptor =
             vk::DescriptorBufferInfo{
-                .buffer = vkBuffer,
+                .buffer = buffer,
                 .offset = 0,
                 .range = bufferCreateInfo.size,
             },
