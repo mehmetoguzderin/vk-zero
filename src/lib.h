@@ -547,4 +547,24 @@ inline float Pcg32Float(Pcg32 &rng) {
     return value.float_type - 1.0f;
 }
 
+/*
+inline uint32_t Morton8Encode(uint3 a) {
+    a = (a * uint3(0x00010001u)) & uint3(0xFF0000FFu);
+    a = (a * uint3(0x00000101u)) & uint3(0x0F00F00Fu);
+    a = (a * uint3(0x00000011u)) & uint3(0xC30C30C3u);
+    a = (a * uint3(0x00000005u)) & uint3(0x49249249u);
+    return dot(a, uint3(4, 2, 1));
+}
+
+inline uint3 Morton8Decode(uint32_t a) {
+    uint3 b = uint3(a);
+    b = b / uint3(4, 2, 1);
+    b = (b & uint3(0x49249249u)) / uint3(0x00000005u);
+    b = (b & uint3(0xC30C30C3u)) / uint3(0x00000011u);
+    b = (b & uint3(0x0F00F00Fu)) / uint3(0x00000101u);
+    b = (b & uint3(0xFF0000FFu)) / uint3(0x00010001u);
+    return b;
+}
+*/
+
 #endif
