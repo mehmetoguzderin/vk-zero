@@ -547,24 +547,25 @@ inline float Pcg32Float(Pcg32 &rng) {
     return value.float_type - 1.0f;
 }
 
-/*
-inline uint32_t Morton8Encode(uint3 a) {
-    a = (a * uint3(0x00010001u)) & uint3(0xFF0000FFu);
-    a = (a * uint3(0x00000101u)) & uint3(0x0F00F00Fu);
-    a = (a * uint3(0x00000011u)) & uint3(0xC30C30C3u);
-    a = (a * uint3(0x00000005u)) & uint3(0x49249249u);
-    return dot(a, uint3(4, 2, 1));
+inline uint32_t Morton6Encode(uint3 a) {
+    a = a & uvec3(0x3fu);
+    a = (a | (a << uvec3(16))) & uvec3(0x30000ffu);
+    a = (a | (a << uvec3(8))) & uvec3(0x300f00fu);
+    a = (a | (a << uvec3(4))) & uvec3(0x30c30c3u);
+    a = (a | (a << uvec3(2))) & uvec3(0x9249249u);
+    a = a << uvec3(2, 1, 0);
+    return a.x | a.y | a.z;
 }
 
-inline uint3 Morton8Decode(uint32_t a) {
-    uint3 b = uint3(a);
-    b = b / uint3(4, 2, 1);
-    b = (b & uint3(0x49249249u)) / uint3(0x00000005u);
-    b = (b & uint3(0xC30C30C3u)) / uint3(0x00000011u);
-    b = (b & uint3(0x0F00F00Fu)) / uint3(0x00000101u);
-    b = (b & uint3(0xFF0000FFu)) / uint3(0x00010001u);
+inline uint3 Morton6Decode(uint32_t a) {
+    uint3 b = uvec3(a);
+    b = b >> uvec3(2, 1, 0);
+    b = b & uvec3(0x9249249u);
+    b = (b ^ (b >> uvec3(2))) & uvec3(0x30c30c3u);
+    b = (b ^ (b >> uvec3(4))) & uvec3(0x300f00fu);
+    b = (b ^ (b >> uvec3(8))) & uvec3(0x30000ffu);
+    b = (b ^ (b >> uvec3(16))) & uvec3(0x3fu);
     return b;
 }
-*/
 
 #endif
